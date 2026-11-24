@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Spotify イントロドン</title>
+  <style>
+    :root {
+      --bg: #121212;
+      --card: #1e1e1e;
+      --green: #1db954;
+      --text: #ffffff;
+      --muted: #b3b3b3;
+      --p0: #e53935;
+      --p1: #1e88e5;
+      --p2: #43a047;
+      --p3: #fb8c00;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); color: var(--text);
+      touch-action: manipulation; user-select: none;
+    }
+    .screen { display: none; min-height: 100dvh; padding: 16px; max-width: 600px; margin: 0 auto; }
+    .screen.active { display: flex; flex-direction: column; }
+    h1, h2, h3 { margin: 0 0 12px; }
+    .card { background: var(--card); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+    button {
+      border: none; border-radius: 10px; padding: 12px 16px; font-size: 15px; font-weight: 700;
+      cursor: pointer; color: #fff; background: #333; transition: opacity 0.15s, transform 0.08s;
+    }
+    button:active { transform: scale(0.97); }
+    button:disabled { opacity: 0.4; pointer-events: none; }
+    .btn-green { background: var(--green); color: #000; }
+    .btn-danger { background: #c62828; }
+    .btn-sm { padding: 8px 12px; font-size: 13px; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    input[type="text"], select {
+      background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 10px;
+      padding: 10px 12px; font-size: 15px; width: 100%;
+    }
+    .list-box { max-height: 220px; overflow-y: auto; margin-top: 8px; }
+    .track-item {
+      display: flex; align-items: center; gap: 10px; padding: 8px 4px;
+      border-bottom: 1px solid #2c2c2c; font-size: 14px;
+    }
+    .track-item img { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; }
+    .track-meta { flex: 1; min-width: 0; }
+    .track-title { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .track-artist { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .badge { background: #333; padding: 3px 8px; border-radius: 999px; font-size: 12px; color: var(--muted); }
+    .hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+    /* ゲーム画面 */
+    #screen-game { padding: 10px; justify-content: space-between; gap: 8px; }
+    .buzzer-row { display: grid; gap: 8px; flex: 1; }
+    .buzzer-row.cols-1 { grid-template-columns: 1fr; }
+    .buzzer-row.cols-2 { grid-template-columns: 1fr 1fr; }
+    .buzzer-btn {
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      border-radius: 16px; min-height: 120px; font-size: 20px; position: relative;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .buzzer-btn.rotated { transform: rotate(180deg); }
+    .buzzer-btn.rotated:active { transform: rotate(180deg) scale(0.97); }
+    .buzzer-btn.locked { opacity: 0.25; filter: grayscale(1); }
+    .buzzer-score { font-size: 14px; margin-top: 4px; opacity: 0.9; }
+    .center-panel {
+      background: var(--card); border-radius: 16px; padding: 14px; text-align: center;
+    }
+    .status-text { font-size: 18px; font-weight: 700; margin: 6px 0; }
+
+    /* モーダル（回答・結果） */
+    .modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.86); display: none;
+      align-items: center; justify-content: center; padding: 16px; z-index: 50;
+    }
+    .modal.active { display: flex; }
+    .modal-card {
+      background: #202020; border-radius: 18px; padding: 18px; width: 100%; max-width: 480px;
+      text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    }
+    .choice-btn {
+      width: 100%; text-align: left; margin-bottom: 8px; background: #2e2e2e;
+      padding: 12px 14px; line-height: 1.3;
+    }
+    .choice-sub { display: block; font-size: 12px; color: var(--muted); font-weight: 400; }
+    .album-art { width: 140px; height: 140px; border-radius: 12px; object-fit: cover; margin: 10px auto; display: block; }
+  </style>
+</head>
+<body>
+
+<!-- 1. ログイン画面 -->
+<section id="screen-login" class="screen active" style="justify-content:center; text-align:center;">
+  <div class="card" style="padding:28px 18px;">
+    <h1>🎵 Spotify イントロドン</h1>
+    <p class="hint" style="margin-bottom:20px;">
+      Android 1台で対面早押し対戦！<br>
+      自分のプレイリストや検索した曲から自動で出題・正誤判定します。
+    </p>
+    <button class="btn-green" style="width:100%; font-size:17px;" onclick="loginSpotify()">
+      Spotify でログイン
+    </button>
+    <p id="login-error" class="hint" style="color:#ff6b6b; margin-top:12px;"></p>
+  </div>
+</section>
+
+<!-- 2. セットアップ画面（曲選び＆ルール設定） -->
+<section id="screen-setup" class="screen">
+  <div class="row" style="justify-content:space-between; margin-bottom:10px;">
+    <h2 style="margin:0;">🎵 クイズ準備</h2>
+    <button class="btn-sm" onclick="logoutSpotify()">ログアウト</button>
+  </div>
+
+  <!-- 曲の読み込み -->
+  <div class="card">
+    <h3>1. 曲を追加する</h3>
+    <div class="row" style="margin-bottom:8px;">
+      <select id="playlist-select" style="flex:1;"></select>
+      <button class="btn-green btn-sm" onclick="loadSelectedPlaylist()">読込</button>
+    </div>
+    <p class="hint" style="margin:0 0 10px;">
+      ※Spotifyの仕様上、自分で作成（または共同編集）したプレイリストと「お気に入りの曲」のみ読み込めます。
+    </p>
+    <div class="row">
+      <input type="text" id="search-input" placeholder="曲名・アーティスト名で検索して追加..." style="flex:1;" />
+      <button class="btn-sm" onclick="searchTracks()">検索</button>
+    </div>
+    <div id="search-results" class="list-box"></div>
+  </div>
+
+  <!-- 出題リスト -->
+  <div class="card">
+    <div class="row" style="justify-content:space-between;">
+      <h3 style="margin:0;">2. 出題リスト <span id="pool-count" class="badge">0曲</span></h3>
+      <button class="btn-sm btn-danger" onclick="clearPool()">全削除</button>
+    </div>
+    <div id="pool-list" class="list-box"></div>
+  </div>
+
+  <!-- ゲーム設定 -->
+  <div class="card">
+    <h3>3. 対戦ルール</h3>
+    <div class="row" style="margin-bottom:8px;">
+      <label style="flex:1;">
+        <span class="hint">プレイヤー人数</span>
+        <select id="opt-players">
+          <option value="2" selected>2人（対面）</option>
+          <option value="3">3人（対面）</option>
+          <option value="4">4人（対面）</option>
+          <option value="1">1人（練習モード）</option>
+        </select>
+      </label>
+      <label style="flex:1;">
+        <span class="hint">正誤判定の方法</span>
+        <select id="opt-mode">
+          <option value="choice" selected>4択クイズ（自動判定）</option>
+          <option value="text">曲名入力（あいまい判定）</option>
+        </select>
+      </label>
+    </div>
+    <label>
+      <span class="hint">出題数</span>
+      <select id="opt-rounds">
+        <option value="5">5問</option>
+        <option value="10" selected>10問</option>
+        <option value="999">リストの全曲</option>
+      </select>
+    </label>
+  </div>
+
+  <button class="btn-green" style="width:100%; padding:16px; font-size:18px;" onclick="startGame()">
+    ゲームスタート！
+  </button>
+  <p class="hint" style="text-align:center; margin-top:8px;">
+    ※開始前にSpotifyアプリで1秒だけ再生→停止しておくとスムーズです。
+  </p>
+</section>
+
+<!-- 3. ゲーム画面 -->
+<section id="screen-game" class="screen">
+  <div id="top-buzzers" class="buzzer-row"></div>
+
+  <div class="center-panel">
+    <div class="row" style="justify-content:space-between; margin-bottom:4px;">
+      <span id="round-label" class="badge">第 1 / 10 問</span>
+      <button class="btn-sm" onclick="abortGame()">終了</button>
+    </div>
+    <div id="game-status" class="status-text">「再生」を押してスタート</div>
+    <div class="row" style="justify-content:center; margin-top:8px;">
+      <button id="btn-play" class="btn-green" onclick="playCurrentQuestion()">▶ イントロ再生</button>
+      <button id="btn-giveup" class="btn-sm" onclick="giveUpQuestion()" disabled>パス / 正解を見る</button>
+    </div>
+  </div>
+
+  <div id="bottom-buzzers" class="buzzer-row"></div>
+</section>
+
+<!-- 4. 最終結果画面 -->
+<section id="screen-finish" class="screen" style="justify-content:center; text-align:center;">
+  <div class="card" style="padding:24px;">
+    <h1>🏆 結果発表</h1>
+    <div id="final-ranking" style="margin:16px 0; text-align:left;"></div>
+    <div class="row" style="justify-content:center;">
+      <button class="btn-green" onclick="startGame()">もう一回遊ぶ</button>
+      <button onclick="showScreen('setup')">曲選びに戻る</button>
+    </div>
+  </div>
+</section>
+
+<!-- 回答モーダル -->
+<div id="modal-answer" class="modal">
+  <div class="modal-card">
+    <h2 id="ans-player-title">プレイヤー1 の回答権！</h2>
+    <div id="ans-choice-area"></div>
+    <div id="ans-text-area" style="display:none;">
+      <input type="text" id="ans-text-input" placeholder="曲名を入力（ひらがな・英語OK）" autocomplete="off" />
+      <button class="btn-green" style="width:100%; margin-top:10px;" onclick="submitTextAnswer()">回答する！</button>
+    </div>
+  </div>
+</div>
+
+<!-- 1問ごとの正解発表モーダル -->
+<div id="modal-reveal" class="modal">
+  <div class="modal-card">
+    <h2 id="reveal-heading">⭕ 正解！</h2>
+    <img id="reveal-img" class="album-art" src="" alt="" />
+    <div id="reveal-title" style="font-size:19px; font-weight:700;"></div>
+    <div id="reveal-artist" class="hint" style="font-size:14px; margin-bottom:14px;"></div>
+    <button class="btn-green" style="width:100%;" onclick="nextRound()">次の問題へ ➔</button>
+  </div>
+</div>
+
+<script>
+  // ==========================================
+  // ★ここにSpotify DeveloperのClient IDを貼り付け
+  // ==========================================
+  const CLIENT_ID = "f3db95d96e6c4eb4b8b2c570b1311828";
+
+  const REDIRECT_URI = window.location.origin + window.location.pathname;
+  const SCOPES = [
+    "user-read-playback-state",
+    "user-modify-playback-state",
+    "playlist-read-private",
+    "playlist-read-collaborative",
+    "user-library-read"
+  ].join(" ");
+
+  const PLAYER_COLORS = ["#e53935", "#1e88e5", "#43a047", "#fb8c00"];
+  const PLAYER_NAMES = ["赤 (P1)", "青 (P2)", "緑 (P3)", "橙 (P4)"];
+
+  let myUserId = "";
+  let quizPool = []; // { id, uri, name, artist, image, enabled }
+  let game = null;
+  let audioCtx = null;
+
+  // ---------- 効果音（Web Audio API） ----------
+  function playTone(type) {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      const now = audioCtx.currentTime;
+      const beep = (freq, start, dur, wave = "sine") => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = wave;
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0.25, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(start);
+        osc.stop(start + dur);
+      };
+      if (type === "buzz") beep(880, now, 0.14, "triangle");
+      if (type === "correct") { beep(1046, now, 0.14); beep(1318, now + 0.13, 0.35); }
+      if (type === "wrong") { beep(180, now, 0.18, "sawtooth"); beep(150, now + 0.2, 0.3, "sawtooth"); }
+    } catch (e) {}
+  }
+
+  // ---------- PKCE 認証 ----------
+  function generateRandomString(len) {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const vals = crypto.getRandomValues(new Uint8Array(len));
+    return Array.from(vals, v => chars[v % chars.length]).join("");
+  }
+  async function sha256(plain) {
+    const data = new TextEncoder().encode(plain);
+    return crypto.subtle.digest("SHA-256", data);
+  }
+  function base64url(buf) {
+    return btoa(String.fromCharCode(...new Uint8Array(buf)))
+      .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  }
+
+  async function loginSpotify() {
+    if (!CLIENT_ID || CLIENT_ID === "YOUR_SPOTIFY_CLIENT_ID") {
+      document.getElementById("login-error").textContent = "コード内の CLIENT_ID を書き換えてから開いてください。";
+      return;
+    }
+    const verifier = generateRandomString(64);
+    const challenge = base64url(await sha256(verifier));
+    localStorage.setItem("sp_code_verifier", verifier);
+
+    const params = new URLSearchParams({
+      client_id: CLIENT_ID,
+      response_type: "code",
+      redirect_uri: REDIRECT_URI,
+      scope: SCOPES,
+      code_challenge_method: "S256",
+      code_challenge: challenge
+    });
+    window.location.href = `https://accounts.spotify.com/authorize?${params}`;
+  }
+
+  async function exchangeToken(code) {
+    const verifier = localStorage.getItem("sp_code_verifier");
+    const res = await fetch("https://accounts.spotify.com/api/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: CLIENT_ID,
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: REDIRECT_URI,
+        code_verifier: verifier
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error_description || "認証に失敗しました");
+    saveTokens(data);
+    history.replaceState({}, "", REDIRECT_URI);
+  }
+
+  async function refreshAccessToken() {
+    const refresh = localStorage.getItem("sp_refresh_token");
+    if (!refresh) return false;
+    const res = await fetch("https://accounts.spotify.com/api/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: CLIENT_ID,
+        grant_type: "refresh_token",
+        refresh_token: refresh
+      })
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    saveTokens(data);
+    return true;
+  }
+
+  function saveTokens(data) {
+    localStorage.setItem("sp_access_token", data.access_token);
+    if (data.refresh_token) localStorage.setItem("sp_refresh_token", data.refresh_token);
+    localStorage.setItem("sp_expires_at", String(Date.now() + (data.expires_in - 60) * 1000));
+  }
+
+  function logoutSpotify() {
+    localStorage.removeItem("sp_access_token");
+    localStorage.removeItem("sp_refresh_token");
+    localStorage.removeItem("sp_expires_at");
+    showScreen("login");
+  }
+
+  async function spotifyFetch(path, options = {}) {
+    const exp = Number(localStorage.getItem("sp_expires_at") || 0);
+    if (Date.now() > exp) {
+      const ok = await refreshAccessToken();
+      if (!ok) { logoutSpotify(); throw new Error("再ログインが必要です"); }
+    }
+    const token = localStorage.getItem("sp_access_token");
+    const res = await fetch(`https://api.spotify.com/v1${path}`, {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
+        ...(options.headers || {})
+      }
+    });
+    if (res.status === 204) return null;
+    if (res.status === 401) {
+      const ok = await refreshAccessToken();
+      if (ok) return spotifyFetch(path, options);
+      logoutSpotify();
+      throw new Error("認証が切れました");
+    }
+    const text = await res.text();
+    const json = text ? JSON.parse(text) : null;
+    if (!res.ok) throw new Error(json?.error?.message || `API Error ${res.status}`);
+    return json;
+  }
+
+  // ---------- 画面切替 & 初期化 ----------
+  function showScreen(name) {
+    document.querySelectorAll(".screen").forEach(el => el.classList.remove("active"));
+    document.getElementById(`screen-${name}`).classList.add("active");
+  }
+
+  async function init() {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const err = params.get("error");
+    if (err) {
+      document.getElementById("login-error").textContent = `ログインがキャンセルされました (${err})`;
+      return;
+    }
+    try {
+      if (code) await exchangeToken(code);
+      if (localStorage.getItem("sp_access_token")) {
+        await setupUserData();
+        showScreen("setup");
+      }
+    } catch (e) {
+      document.getElementById("login-error").textContent = e.message;
+      showScreen("login");
+    }
+  }
+
+  async function setupUserData() {
+    const me = await spotifyFetch("/me");
+    myUserId = me.id;
+    const plData = await spotifyFetch("/me/playlists?limit=50");
+    const select = document.getElementById("playlist-select");
+    select.innerHTML = `<option value="__LIKED__">❤️ お気に入りの曲（最新50曲）</option>`;
+    (plData.items || [])
+      .filter(p => p && (p.owner?.id === myUserId || p.collaborative))
+      .forEach(p => {
+        const count = p.items?.total ?? p.tracks?.total ?? "?";
+        const opt = document.createElement("option");
+        opt.value = p.id;
+        opt.textContent = `${p.name} (${count}曲)`;
+        select.appendChild(opt);
+      });
+    renderPool();
+  }
+
+  // ---------- 曲選び ----------
+  function toTrackObj(t) {
+    if (!t || t.type !== "track" || !t.uri) return null;
+    return {
+      id: t.id,
+      uri: t.uri,
+      name: t.name,
+      artist: (t.artists || []).map(a => a.name).join(", "),
+      image: t.album?.images?.[1]?.url || t.album?.images?.[0]?.url || "",
+      enabled: true
+    };
+  }
+
+  function addTrackToPool(trackObj) {
+    if (!trackObj) return;
+    if (!quizPool.some(t => t.id === trackObj.id)) {
+      quizPool.push(trackObj);
+    }
+  }
+
+  async function loadSelectedPlaylist() {
+    const val = document.getElementById("playlist-select").value;
+    try {
+      let data;
+      if (val === "__LIKED__") {
+        data = await spotifyFetch("/me/tracks?limit=50");
+      } else {
+        data = await spotifyFetch(`/playlists/${val}/items?limit=50`);
+      }
+      let added = 0;
+      (data.items || []).forEach(row => {
+        const t = toTrackObj(row.item || row.track);
+        if (t && !quizPool.some(x => x.id === t.id)) {
+          quizPool.push(t);
+          added++;
+        }
+      });
+      renderPool();
+      alert(`${added} 曲をリストに追加しました！`);
+    } catch (e) {
+      alert("読み込みエラー: " + e.message);
+    }
+  }
+
+  async function searchTracks() {
+    const q = document.getElementById("search-input").value.trim();
+    if (!q) return;
+    const box = document.getElementById("search-results");
+    box.innerHTML = `<div class="hint">検索中...</div>`;
+    try {
+      const data = await spotifyFetch(`/search?q=${encodeURIComponent(q)}&type=track&limit=10`);
+      const tracks = (data.tracks?.items || []).map(toTrackObj).filter(Boolean);
+      if (!tracks.length) { box.innerHTML = `<div class="hint">見つかりませんでした</div>`; return; }
+      box.innerHTML = "";
+      tracks.forEach(t => {
+        const row = document.createElement("div");
+        row.className = "track-item";
+        row.innerHTML = `
+          <img src="${t.image}" alt="" />
+          <div class="track-meta">
+            <div class="track-title">${escapeHtml(t.name)}</div>
+            <div class="track-artist">${escapeHtml(t.artist)}</div>
+          </div>
+        `;
+        const btn = document.createElement("button");
+        btn.className = "btn-green btn-sm";
+        btn.textContent = "＋追加";
+        btn.onclick = () => {
+          addTrackToPool(t);
+          renderPool();
+          btn.textContent = "済";
+          btn.disabled = true;
+        };
+        row.appendChild(btn);
+        box.appendChild(row);
+      });
+    } catch (e) {
+      box.innerHTML = `<div class="hint" style="color:#ff6b6b;">検索エラー: ${escapeHtml(e.message)}</div>`;
+    }
+  }
+
+  function renderPool() {
+    const enabledCount = quizPool.filter(t => t.enabled).length;
+    document.getElementById("pool-count").textContent = `${enabledCount} / ${quizPool.length}曲`;
+    const list = document.getElementById("pool-list");
+    if (!quizPool.length) {
+      list.innerHTML = `<div class="hint" style="padding:8px 0;">まだ曲がありません。プレイリスト読込か検索で追加してください。</div>`;
+      return;
+    }
+    list.innerHTML = "";
+    quizPool.forEach((t, idx) => {
+      const row = document.createElement("div");
+      row.className = "track-item";
+      row.innerHTML = `
+        <input type="checkbox" ${t.enabled ? "checked" : ""} style="width:20px; height:20px;" />
+        <img src="${t.image}" alt="" />
