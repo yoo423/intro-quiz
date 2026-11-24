@@ -236,7 +236,7 @@
   // ==========================================
   // ★ここにSpotify DeveloperのClient IDを貼り付け
   // ==========================================
-  const CLIENT_ID = "YOUR_SPOTIFY_CLIENT_ID";
+  const CLIENT_ID = "f3db95d96e6c4eb4b8b2c570b1311828";
 
   const REDIRECT_URI = window.location.origin + window.location.pathname;
   const SCOPES = [
