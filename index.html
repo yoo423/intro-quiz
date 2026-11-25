@@ -171,6 +171,15 @@
       box-shadow: 0 10px 0 rgba(42,36,56,0.28);
       animation: popIn 0.22s ease-out;
     }
+        @keyframes popInRotated {
+      0% { transform: rotate(180deg) scale(0.82); opacity: 0; }
+      75% { transform: rotate(180deg) scale(1.03); opacity: 1; }
+      100% { transform: rotate(180deg) scale(1); opacity: 1; }
+    }
+    .modal-card.rotated {
+      transform: rotate(180deg);
+      animation: popInRotated 0.22s ease-out;
+    }
     .choice-btn {
       width: 100%; text-align: left; margin-bottom: 10px; background: #fffdf7;
       padding: 11px 12px; line-height: 1.3; display: flex; align-items: center; gap: 10px;
@@ -1752,7 +1761,10 @@
     openAnswerModal(playerIdx);
   }
 
-  async function openAnswerModal(playerIdx) {
+    async function openAnswerModal(playerIdx) {
+    const isFlipped = game.playerCount >= 2 && (playerIdx === 1 || playerIdx === 2);
+    document.querySelector("#modal-answer .modal-card").classList.toggle("rotated", isFlipped);
+
     const titleEl = document.getElementById("ans-player-title");
     titleEl.textContent = `${PLAYER_NAMES[playerIdx]} の回答権！`;
     titleEl.style.color = PLAYER_COLORS[playerIdx];
