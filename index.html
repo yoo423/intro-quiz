@@ -207,7 +207,7 @@
     <h1 class="logo-title">Spotify イントロドン！</h1>
     <p class="hint" style="margin-bottom:18px;">
       Android 1台でワイワイ早押しバトル！<br>
-      スピード得点制・3秒自動準備・曲数無制限
+      スピード得点制・低遅延チューニング・曲数無制限
     </p>
 
     <div id="client-id-box" style="text-align:left; margin-bottom:14px;">
@@ -342,9 +342,15 @@
         </select>
       </label>
     </div>
-    <p class="hint" style="margin:4px 0 0;">
-      ※第1問は手動スタート、第2問以降は3秒カウントダウン中に次の曲と選択肢を自動準備します。
-    </p>
+    <label>
+      <span class="hint">⚡ ラグ補正（音が遅れて鳴る場合は大きめに）</span>
+      <select id="opt-lead">
+        <option value="400">0.4秒先打ち（高速Wi-Fi向け）</option>
+        <option value="650" selected>0.65秒先打ち（標準・おすすめ）</option>
+        <option value="900">0.9秒先打ち（少し遅れるとき）</option>
+        <option value="1200">1.2秒先打ち（かなり遅れるとき）</option>
+      </select>
+    </label>
   </div>
 
   <button class="btn-pink" style="width:100%; padding:16px; font-size:20px;" onclick="startGame()">
@@ -453,6 +459,7 @@
   let game = null;
   let audioCtx = null;
   let timerRafId = null;
+  let buzzAudio = null; // OSのオーディオフォーカスを奪ってSpotifyを即停止させる専用Audio
 
   function getClientId() {
     if (DEFAULT_CLIENT_ID && DEFAULT_CLIENT_ID !== "YOUR_SPOTIFY_CLIENT_ID") {
@@ -467,7 +474,92 @@
     return (localStorage.getItem("sp_saved_client_id") || "").trim();
   }
 
-  // ---------- 効果音 ----------
+  // ---------- 即時停止用ブザーWAV（HTML Audio生成）＆効果音 ----------
+  function createBuzzAudioElement() {
+    try {
+      const sampleRate = 22050;
+      const duration = 0.24;
+      const numSamples = Math.floor(sampleRate * duration);
+      const dataSize = numSamples * 2;
+      const buffer = new ArrayBuffer(44 + dataSize);
+        const view = new DataView(buffer);
+      const writeStr = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
+
+      writeStr(0, "RIFF");
+      view.setUint32(4, 36 + dataSize, true);
+      writeStr(8, "WAVE");
+      writeStr(12, "fmt ");
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeStr(36, "data");
+      view.setUint32(40, dataSize, true);
+
+      for (let i = 0; i < numSamples; i++) {
+        const t = i / sampleRate;
+        const freq = t < 0.09 ? 880 : 1174.66;
+        const localT = t < 0.09 ? t : (t - 0.09);
+        const env = Math.exp(-localT * 10);
+        const sample = Math.sin(2 * Math.PI * freq * t) * 0.55 * env;
+        view.setInt16(44 + i * 2, Math.max(-32767, Math.min(32767, Math.round(sample * 32767))), true);
+      }
+
+      const blob = new Blob([buffer], { type: "audio/wav" });
+      const audio = new Audio(URL.createObjectURL(blob));
+      audio.preload = "auto";
+      return audio;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function unlockAudioAll() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+    } catch (e) {}
+    if (!buzzAudio) buzzAudio = createBuzzAudioElement();
+    if (buzzAudio && !buzzAudio._unlocked) {
+      buzzAudio.muted = true;
+      const p = buzzAudio.play();
+      if (p && p.then) {
+        p.then(() => {
+          buzzAudio.pause();
+          buzzAudio.currentTime = 0;
+          buzzAudio.muted = false;
+          buzzAudio._unlocked = true;
+        }).catch(() => { buzzAudio.muted = false; });
+      }
+    }
+  }
+
+  // 早押し専用：HTML Audio再生でAndroidのオーディオフォーカスを即座にChromeへ奪う
+  function triggerInstantBuzzSound() {
+    if (buzzAudio) {
+      try {
+        buzzAudio.muted = false;
+        buzzAudio.currentTime = 0;
+        const p = buzzAudio.play();
+        if (p && p.catch) p.catch(() => playTone("buzz"));
+        return;
+      } catch (e) {}
+    }
+    playTone("buzz");
+  }
+
+  function stopBuzzAudio() {
+    if (buzzAudio) {
+      try {
+        buzzAudio.pause();
+        buzzAudio.currentTime = 0;
+      } catch (e) {}
+    }
+  }
+
   function playTone(type) {
     try {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -481,7 +573,7 @@
         gain.gain.setValueAtTime(vol, start);
         gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
         osc.connect(gain);
-                gain.connect(audioCtx.destination);
+        gain.connect(audioCtx.destination);
         osc.start(start);
         osc.stop(start + dur);
       };
@@ -496,8 +588,7 @@
   function calcPointsForElapsed(ms, scoringMode) {
     if (scoringMode === "fixed") return 1;
     const sec = Math.max(0, ms / 1000);
-    // 0.35 を大きくするとさらにシビア、小さくすると緩やかになります
-    return Math.max(20, Math.round(20 + 80 * Math.exp(-0.30 * sec)));
+    return Math.max(20, Math.round(20 + 80 * Math.exp(-0.35 * sec)));
   }
 
   function getElapsedMs() {
@@ -693,6 +784,8 @@
   }
 
   async function init() {
+    buzzAudio = createBuzzAudioElement();
+
     if (DEFAULT_CLIENT_ID && DEFAULT_CLIENT_ID !== "YOUR_SPOTIFY_CLIENT_ID") {
       document.getElementById("client-id-box").style.display = "none";
     } else {
@@ -993,7 +1086,7 @@
     renderPool();
   }
 
-  // ---------- ズレ防止・スマートフォン優先 Spotify 再生コントロール ----------
+  // ---------- 低遅延 Spotify 再生コントロール ----------
   async function refreshDeviceId() {
     const data = await spotifyFetch("/me/player/devices");
     const devices = data?.devices || [];
@@ -1047,28 +1140,33 @@
   }
 
   async function playTrackFromZero(uri) {
+    stopBuzzAudio();
     await withDeviceRetry(id =>
       spotifyFetch(`/me/player/play?device_id=${encodeURIComponent(id)}`, {
         method: "PUT",
+        priority: "high",
         body: JSON.stringify({ uris: [uri], position_ms: 0 })
       })
     );
   }
 
   async function triggerDirectPlaylistStart(playlist) {
+    stopBuzzAudio();
     await withDeviceRetry(async id => {
       await spotifyFetch(`/me/player/shuffle?state=true&device_id=${encodeURIComponent(id)}`, { method: "PUT" }).catch(() => {});
-      await sleep(180);
+      await sleep(160);
       await spotifyFetch(`/me/player/play?device_id=${encodeURIComponent(id)}`, {
         method: "PUT",
+        priority: "high",
         body: JSON.stringify({ context_uri: playlist.uri, position_ms: 0 })
       });
     });
   }
 
   async function triggerDirectPlaylistNext() {
+    stopBuzzAudio();
     await withDeviceRetry(id =>
-      spotifyFetch(`/me/player/next?device_id=${encodeURIComponent(id)}`, { method: "POST" })
+      spotifyFetch(`/me/player/next?device_id=${encodeURIComponent(id)}`, { method: "POST", priority: "high" })
     );
   }
 
@@ -1077,7 +1175,7 @@
     let nudgedPlay = false;
     let nudgedNext = false;
 
-    await sleep(450);
+    await sleep(420);
     for (let i = 0; i < 20; i++) {
       if (!game || game.roundToken !== roundToken) return null;
       const snap = await getPlaybackSnapshot();
@@ -1122,21 +1220,33 @@
           }
         }
       }
-      await sleep(280);
+      await sleep(260);
     }
 
     throw new Error("Spotifyの曲切り替えを確認できませんでした。Spotifyアプリが起動しているか確認して、もう一度スタートを押してください。");
   }
 
+  // ゼロオーバーヘッド最速一時停止（同期的に即fetch発射）
   function pausePlaybackFast() {
+    const token = localStorage.getItem("sp_access_token");
+    if (!token) return;
     const qs = cachedDeviceId ? `?device_id=${encodeURIComponent(cachedDeviceId)}` : "";
-    spotifyFetch(`/me/player/pause${qs}`, { method: "PUT", keepalive: true }).catch(() => {});
+    fetch(`https://api.spotify.com/v1/me/player/pause${qs}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+      keepalive: true,
+      priority: "high"
+    }).catch(() => {});
   }
 
   async function resumePlaybackFast() {
+    stopBuzzAudio();
     try {
       await withDeviceRetry(id =>
-        spotifyFetch(`/me/player/play?device_id=${encodeURIComponent(id)}`, { method: "PUT" })
+        spotifyFetch(`/me/player/play?device_id=${encodeURIComponent(id)}`, {
+          method: "PUT",
+          priority: "high"
+        })
       );
     } catch (e) {}
   }
@@ -1179,7 +1289,7 @@
   }
 
   // ---------- ゲーム進行 ----------
-function shuffle(arr) {
+  function shuffle(arr) {
     const a = [...arr];
     for (let i = a.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -1189,20 +1299,19 @@ function shuffle(arr) {
   }
 
   function startGame() {
-    try {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === "suspended") audioCtx.resume();
-    } catch (e) {}
+    unlockAudioAll();
 
     const playerCount = Number(document.getElementById("opt-players").value);
     const answerMode = document.getElementById("opt-mode").value;
     const scoringMode = document.getElementById("opt-scoring").value;
     const roundOpt = document.getElementById("opt-rounds").value;
+    const leadMs = Number(document.getElementById("opt-lead").value);
 
     const baseState = {
       playerCount,
       mode: answerMode,
       scoringMode,
+      leadMs,
       round: 0,
       roundToken: 0,
       scores: Array(playerCount).fill(0),
@@ -1386,9 +1495,9 @@ function shuffle(arr) {
     }
   }
 
+  // カウントダウン3秒固定 ＋ 残りleadMsでフライング再生（発音ラグを相殺）
   async function startCooldownAndPlay() {
     const token = ++game.roundToken;
-    const waitSec = 3;
     game.state = "COOLDOWN";
     game.elapsedMs = 0;
     game.playingSince = null;
@@ -1404,13 +1513,77 @@ function shuffle(arr) {
 
     const prepPromise = prepareNextQuestion(token).catch(() => {});
 
-    for (let s = waitSec; s >= 1; s--) {
+    // 3 → 2（2秒かけて裏で曲と4択を準備）
+    for (let s = 3; s >= 2; s--) {
       if (!game || game.roundToken !== token) return;
       cdEl.textContent = String(s);
       playTone("tick");
       await sleep(1000);
     }
 
+    if (!game || game.roundToken !== token) return;
+    cdEl.textContent = "1";
+    playTone("tick");
+
+    // 最後の1秒でフライング再生を先打ち
+    const leadMs = Math.min(950, Math.max(250, game.leadMs || 650));
+    const preWait = Math.max(50, 1000 - leadMs);
+    await sleep(preWait);
+    if (!game || game.roundToken !== token) return;
+
+    if (game.preparedTrack) {
+      const track = game.preparedTrack;
+      const choices = game.preparedChoices;
+      game.preparedTrack = null;
+      game.preparedChoices = null;
+
+      game.currentTrack = track;
+      game.playedIds.add(track.id);
+      if (game.historyTracks) game.historyTracks.push(track);
+      if (game.mode === "choice") {
+        game.choicesPromise = choices
+          ? Promise.resolve(choices)
+          : generateDirectChoices(track, game.historyTracks || []);
+      }
+      if (game.source === "direct") game.usedDirectTrackPlay = true;
+
+      try {
+        const fireAt = Date.now();
+        // 再生コマンド発射と同時に、最低限の発音待ち（leadMs）とAPI応答の長い方を待つ
+        await Promise.all([
+          playTrackFromZero(track.uri),
+          sleep(leadMs)
+        ]);
+        if (!game || game.roundToken !== token) {
+          pausePlaybackFast();
+          return;
+        }
+
+        cdEl.style.display = "none";
+        game.state = "PLAYING";
+        game.elapsedMs = 0;
+        game.playingSince = Date.now();
+        document.getElementById("game-status").textContent = "🔥 再生中！早く押した人が勝ち！";
+        renderGameUI();
+        startTimerLoop();
+        return;
+      } catch (e) {
+        if (!game || game.roundToken !== token) return;
+        cdEl.style.display = "none";
+        game.state = "READY";
+        document.getElementById("game-status").textContent = "再生できませんでした（下から再試行）";
+        const playBtn = document.getElementById("btn-play");
+        playBtn.textContent = "▶ もう一度スタート";
+        playBtn.style.display = "inline-block";
+        playBtn.disabled = false;
+        renderGameUI();
+        alert(e.message);
+        return;
+      }
+    }
+
+    // 準備が間に合わなかった・キュー在庫切れ時は残り時間を待ってから通常ルートへ
+    await sleep(leadMs);
     if (!game || game.roundToken !== token) return;
     await prepPromise;
     if (!game || game.roundToken !== token) return;
@@ -1419,10 +1592,7 @@ function shuffle(arr) {
   }
 
   async function playCurrentQuestion() {
-    try {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === "suspended") audioCtx.resume();
-    } catch (e) {}
+    unlockAudioAll();
 
     const token = ++game.roundToken;
     game.state = "LOADING";
@@ -1434,7 +1604,6 @@ function shuffle(arr) {
     renderGameUI();
 
     try {
-      // ① カウントダウン中に準備済みの曲があれば即再生
       if (game.preparedTrack) {
         const track = game.preparedTrack;
         const choices = game.preparedChoices;
@@ -1451,7 +1620,10 @@ function shuffle(arr) {
         }
         if (game.source === "direct") game.usedDirectTrackPlay = true;
 
-        await playTrackFromZero(track.uri);
+        await Promise.all([
+          playTrackFromZero(track.uri),
+          sleep(Math.min(500, game.leadMs || 500))
+        ]);
         if (!game || game.roundToken !== token) return;
 
         game.state = "PLAYING";
@@ -1465,7 +1637,6 @@ function shuffle(arr) {
 
       document.getElementById("game-status").textContent = "🎵 Spotifyで曲を準備中...";
 
-      // ② 初回またはキュー在庫切れ時の補充ルート
       if (game.source === "direct") {
         let snap;
         if (!game.directStarted || game.usedDirectTrackPlay) {
@@ -1513,7 +1684,7 @@ function shuffle(arr) {
 
         setTimeout(() => {
           if (game && game.roundToken === token) refillDirectQueue();
-        }, 800);
+        }, 700);
       } else {
         if (game.round === 0) await refreshDeviceId();
         if (game.deckCursor >= game.deck.length) {
@@ -1529,7 +1700,10 @@ function shuffle(arr) {
           game.choicesPromise = Promise.resolve(shuffle([track, ...dummies]));
         }
 
-        await playTrackFromZero(track.uri);
+        await Promise.all([
+          playTrackFromZero(track.uri),
+          sleep(Math.min(500, game.leadMs || 500))
+        ]);
         if (!game || game.roundToken !== token) return;
 
         game.state = "PLAYING";
@@ -1556,7 +1730,9 @@ function shuffle(arr) {
   function onBuzz(playerIdx) {
     if (!game || game.state !== "PLAYING" || game.lockedOut.has(playerIdx)) return;
 
+    // 1. 最速でSpotify停止命令を発射 ＋ 同時にChromeのAudio再生でOSレベル割り込み
     pausePlaybackFast();
+    triggerInstantBuzzSound();
 
     const lockedMs = getElapsedMs();
     game.elapsedMs = lockedMs;
@@ -1568,7 +1744,6 @@ function shuffle(arr) {
 
     stopTimerLoop();
     updateTimerDisplay();
-    playTone("buzz");
     renderGameUI();
     openAnswerModal(playerIdx);
   }
@@ -1634,7 +1809,7 @@ function shuffle(arr) {
       .toLowerCase()
       .replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60))
       .replace(/[()（）【】\[\]「」『』・\-~!！?？'".,、。\s]/g, "");
-  }
+    }
   function stripSubtitle(str) {
     return str
       .replace(/\s*[\(（\[【].*?[\)）\]】]/g, "")
@@ -1729,6 +1904,7 @@ function shuffle(arr) {
   function finishGame() {
     if (game) game.roundToken++;
     pausePlaybackFast();
+    stopBuzzAudio();
     stopTimerLoop();
     document.getElementById("cooldown-display").style.display = "none";
     document.getElementById("modal-answer").classList.remove("active");
