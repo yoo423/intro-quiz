@@ -1430,7 +1430,215 @@
           game.deckCursor = 0;
         }
         const track = game.deck[game.deckCursor++];
+  async function refillDirectQueue() {
+    if (!game) return;
+    try {
+      const data = await spotifyFetch("/me/player/queue");
+      const list = (data?.queue || []).map(toTrackObj).filter(Boolean);
+      if (!game.directQueue) game.directQueue = [];
+      if (!game.playedIds) game.playedIds = new Set();
+      const queuedIds = new Set(game.directQueue.map(t => t.id));
+      list.forEach(t => {
+        if (!game.playedIds.has(t.id) && !queuedIds.has(t.id)) {
+          game.directQueue.push(t);
+          queuedIds.add(t.id);
+        }
+      });
+      // 短いプレイリストを1周して全曲出し切った場合は履歴をリセットして補充
+      if (list.length > 0 && game.directQueue.length === 0) {
+        game.playedIds.clear();
+        list.forEach(t => {
+          if (t.id !== game.currentTrack?.id) game.directQueue.push(t);
+        });
+      }
+    } catch (e) {}
+  }
+
+  async function prepareNextQuestion(token) {
+    if (!game || game.roundToken !== token) return;
+    if (!game.playedIds) game.playedIds = new Set();
+
+    if (game.source === "custom") {
+      if (game.deckCursor >= game.deck.length) {
+        game.deck = shuffle(game.allTracks);
+        game.deckCursor = 0;
+      }
+      const track = game.deck[game.deckCursor++];
+      game.preparedTrack = track;
+      if (game.mode === "choice") {
+        const dummies = shuffle(game.allTracks.filter(t => t.id !== track.id)).slice(0, 3);
+        game.preparedChoices = shuffle([track, ...dummies]);
+      }
+    } else {
+      if (!game.directQueue) game.directQueue = [];
+      if (game.directQueue.length === 0 && !game.usedDirectTrackPlay) {
+        await refillDirectQueue();
+      }
+      if (!game || game.roundToken !== token) return;
+
+      let nextTrack = null;
+      while (game.directQueue.length > 0) {
+        const cand = game.directQueue.shift();
+        if (!game.playedIds.has(cand.id)) {
+          nextTrack = cand;
+          break;
+        }
+      }
+      if (!nextTrack) return; // 在庫切れ時はカウントダウン後に自動でプレイリスト再補充
+
+      game.preparedTrack = nextTrack;
+      if (game.mode === "choice") {
+        const choices = await generateDirectChoices(nextTrack, game.historyTracks || []);
+        if (!game || game.roundToken !== token) return;
+        game.preparedChoices = choices;
+      }
+    }
+
+    if (game && game.roundToken === token && game.state === "COOLDOWN") {
+      document.getElementById("game-status").textContent = "✨ 準備OK！まもなくスタート！";
+    }
+  }
+
+  async function startCooldownAndPlay() {
+    const token = ++game.roundToken;
+    const waitSec = 3; // 3秒固定カウントダウン
+    game.state = "COOLDOWN";
+    game.elapsedMs = 0;
+    game.playingSince = null;
+    game.preparedTrack = null;
+    game.preparedChoices = null;
+    stopTimerLoop();
+    updateTimerDisplay();
+    renderGameUI();
+
+    const cdEl = document.getElementById("cooldown-display");
+    cdEl.style.display = "block";
+    document.getElementById("game-status").textContent = "🎵 次の曲と選択肢を準備中...";
+
+    // カウントダウンと同時進行で裏で曲と4択を準備
+    const prepPromise = prepareNextQuestion(token).catch(() => {});
+
+    for (let s = waitSec; s >= 1; s--) {
+      if (!game || game.roundToken !== token) return;
+      cdEl.textContent = String(s);
+      playTone("tick");
+      await sleep(1000);
+    }
+
+    if (!game || game.roundToken !== token) return;
+    await prepPromise;
+    if (!game || game.roundToken !== token) return;
+    cdEl.style.display = "none";
+    playCurrentQuestion();
+  }
+
+  async function playCurrentQuestion() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+    } catch (e) {}
+
+    const token = ++game.roundToken;
+    if (!game.playedIds) game.playedIds = new Set();
+    game.state = "LOADING";
+    game.elapsedMs = 0;
+    game.playingSince = null;
+    stopTimerLoop();
+    updateTimerDisplay();
+    document.getElementById("cooldown-display").style.display = "none";
+    renderGameUI();
+
+    try {
+      // ① カウントダウン中に準備済みの曲があれば即再生（待ち時間ほぼゼロ）
+      if (game.preparedTrack) {
+        const track = game.preparedTrack;
+        const choices = game.preparedChoices;
+        game.preparedTrack = null;
+        game.preparedChoices = null;
+
         game.currentTrack = track;
+        game.playedIds.add(track.id);
+        if (game.historyTracks) game.historyTracks.push(track);
+        if (game.mode === "choice") {
+          game.choicesPromise = choices
+            ? Promise.resolve(choices)
+            : generateDirectChoices(track, game.historyTracks || []);
+        }
+        if (game.source === "direct") game.usedDirectTrackPlay = true;
+
+        await playTrackFromZero(track.uri);
+        if (!game || game.roundToken !== token) return;
+
+        game.state = "PLAYING";
+        game.elapsedMs = 0;
+        game.playingSince = Date.now();
+        document.getElementById("game-status").textContent = "🔥 再生中！早く押した人が勝ち！";
+        renderGameUI();
+        startTimerLoop();
+        return;
+      }
+
+      document.getElementById("game-status").textContent = "🎵 Spotifyで曲を準備中...";
+
+      // ② 初回またはキュー在庫切れ時の補充ルート
+      if (game.source === "direct") {
+        let snap;
+        if (!game.directStarted || game.usedDirectTrackPlay) {
+          await refreshDeviceId();
+          const beforeSnap = await getPlaybackSnapshot();
+          await triggerDirectPlaylistStart(game.playlist);
+          snap = await waitForTrackSwitch({
+            beforeTrackId: beforeSnap?.trackId || null,
+            beforeContextUri: beforeSnap?.contextUri || null,
+            targetPlaylistId: game.playlist.id,
+            isNext: false,
+            roundToken: token
+          });
+          if (!game || game.roundToken !== token) return;
+          game.directStarted = true;
+          game.usedDirectTrackPlay = false;
+        } else {
+          const beforeTrackId = game.currentTrack?.id || (await getPlaybackSnapshot())?.trackId || null;
+          await triggerDirectPlaylistNext();
+          snap = await waitForTrackSwitch({
+            beforeTrackId,
+            beforeContextUri: null,
+            targetPlaylistId: game.playlist.id,
+            isNext: true,
+            roundToken: token
+          });
+          if (!game || game.roundToken !== token) return;
+        }
+
+        if (!snap || !snap.track) throw new Error("曲情報を取得できませんでした。");
+
+        game.currentTrack = snap.track;
+        game.playedIds.add(snap.track.id);
+        game.historyTracks.push(snap.track);
+        if (game.mode === "choice") {
+          game.choicesPromise = generateDirectChoices(snap.track, game.historyTracks);
+        }
+
+        game.state = "PLAYING";
+        game.elapsedMs = (snap.progressMs >= 0 && snap.progressMs < 15000) ? snap.progressMs : 0;
+        game.playingSince = Date.now();
+        document.getElementById("game-status").textContent = "🔥 再生中！早く押した人が勝ち！";
+        renderGameUI();
+        startTimerLoop();
+
+        // 再生の裏で次の約20曲分をキューからストックしておく
+        setTimeout(() => {
+          if (game && game.roundToken === token) refillDirectQueue();
+        }, 800);
+      } else {
+        if (game.round === 0) await refreshDeviceId();
+        if (game.deckCursor >= game.deck.length) {
+          game.deck = shuffle(game.allTracks);
+          game.deckCursor = 0;
+        }
+        const track = game.deck[game.deckCursor++];
+        game.currentTrack = track;
+        game.playedIds.add(track.id);
 
         if (game.mode === "choice") {
           const dummies = shuffle(game.allTracks.filter(t => t.id !== track.id)).slice(0, 3);
