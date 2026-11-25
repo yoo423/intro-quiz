@@ -478,7 +478,7 @@
   function createBuzzAudioElement() {
     try {
       const sampleRate = 22050;
-      const duration = 0.24;
+      const duration = 6.0;
       const numSamples = Math.floor(sampleRate * duration);
       const dataSize = numSamples * 2;
       const buffer = new ArrayBuffer(44 + dataSize);
@@ -499,14 +499,18 @@
       writeStr(36, "data");
       view.setUint32(40, dataSize, true);
 
-      for (let i = 0; i < numSamples; i++) {
-        const t = i / sampleRate;
-        const freq = t < 0.09 ? 880 : 1174.66;
-        const localT = t < 0.09 ? t : (t - 0.09);
-        const env = Math.exp(-localT * 10);
-        const sample = Math.sin(2 * Math.PI * freq * t) * 0.55 * env;
+        for (let i = 0; i < numSamples; i++) {
+    const t = i / sampleRate  
+      let sample = 0;
+      if (t < 0.24) {
+          const freq = t < 0.09 ? 880 : 1174.66;
+          const localT = t < 0.09 ? t : (t - 0.09);
+          const env = Math.exp(-localT * 10);
+          sample = Math.sin(2 * Math.PI * freq * t) * 0.55 * env;
+        }
         view.setInt16(44 + i * 2, Math.max(-32767, Math.min(32767, Math.round(sample * 32767))), true);
       }
+
 
       const blob = new Blob([buffer], { type: "audio/wav" });
       const audio = new Audio(URL.createObjectURL(blob));
