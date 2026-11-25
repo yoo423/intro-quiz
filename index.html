@@ -3,104 +3,197 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Spotify イントロドン</title>
+  <title>🎵 イントロドン！</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800;900&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #121212;
-      --card: #1e1e1e;
-      --green: #1db954;
-      --gold: #ffd54f;
-      --text: #ffffff;
-      --muted: #b3b3b3;
+      --bg: #fff9eb;
+      --ink: #2a2438;
+      --muted: #6e677d;
+      --card: #ffffff;
+      --accent: #ff4d79;
+      --accent-dark: #c9184a;
+      --mint: #16c79a;
+      --mint-dark: #0e8f6d;
+      --sky: #00b4d8;
+      --sky-dark: #0077b6;
+      --sun: #ffbe0b;
+      --sun-dark: #d99400;
+      --violet: #8338ec;
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
-      margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg); color: var(--text);
-      touch-action: manipulation; user-select: none;
+      margin: 0;
+      font-family: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Yu Gothic UI", sans-serif;
+      color: var(--ink);
+      background-color: var(--bg);
+      background-image:
+        radial-gradient(#ffd6e0 2px, transparent 2px),
+        radial-gradient(#c8ecff 2px, transparent 2px);
+      background-size: 32px 32px;
+      background-position: 0 0, 16px 16px;
+      touch-action: manipulation;
+      user-select: none;
     }
-    .screen { display: none; min-height: 100dvh; padding: 16px; max-width: 600px; margin: 0 auto; }
+    .screen { display: none; min-height: 100dvh; padding: 14px; max-width: 600px; margin: 0 auto; }
     .screen.active { display: flex; flex-direction: column; }
-    h1, h2, h3 { margin: 0 0 10px; }
-    .card { background: var(--card); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
-    button {
-      border: none; border-radius: 10px; padding: 12px 16px; font-size: 15px; font-weight: 700;
-      cursor: pointer; color: #fff; background: #333; transition: opacity 0.12s, transform 0.06s;
+    h1, h2, h3 { margin: 0 0 10px; font-weight: 900; letter-spacing: 0.02em; }
+    .logo-title {
+      font-size: 30px; line-height: 1.2; margin-bottom: 8px;
+      background: linear-gradient(135deg, #ff4d79 0%, #ff9f1c 50%, #00b4d8 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 2px 0 rgba(42,36,56,0.12));
     }
-    button:active { transform: scale(0.97); }
-    button:disabled { opacity: 0.4; pointer-events: none; }
-    .btn-green { background: var(--green); color: #000; }
-    .btn-danger { background: #c62828; }
-    .btn-sm { padding: 8px 12px; font-size: 13px; }
+    .card {
+      background: var(--card);
+      border: 3px solid var(--ink);
+      border-radius: 22px;
+      padding: 15px;
+      margin-bottom: 12px;
+      box-shadow: 0 5px 0 rgba(42,36,56,0.15);
+    }
+    button {
+      font-family: inherit;
+      border: 3px solid var(--ink);
+      border-radius: 16px;
+      padding: 11px 16px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      color: var(--ink);
+      background: #f3f0fa;
+      box-shadow: 0 4px 0 var(--ink);
+      transition: transform 0.06s, box-shadow 0.06s, opacity 0.12s;
+    }
+    button:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+    button:disabled { opacity: 0.45; pointer-events: none; }
+    .btn-pop { background: var(--mint); color: #fff; text-shadow: 0 1.5px 0 rgba(0,0,0,0.2); }
+    .btn-pink { background: var(--accent); color: #fff; text-shadow: 0 1.5px 0 rgba(0,0,0,0.2); }
+    .btn-sky { background: var(--sky); color: #fff; text-shadow: 0 1.5px 0 rgba(0,0,0,0.2); }
+    .btn-sun { background: var(--sun); color: var(--ink); }
+    .btn-sm { padding: 7px 12px; font-size: 13px; border-radius: 12px; border-width: 2.5px; box-shadow: 0 3px 0 var(--ink); }
     .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     input[type="text"], select {
-      background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 10px;
-      padding: 10px 12px; font-size: 15px; width: 100%;
+      font-family: inherit; font-weight: 700;
+      background: #fffdf7; color: var(--ink);
+      border: 2.5px solid var(--ink); border-radius: 14px;
+      padding: 10px 12px; font-size: 14px; width: 100%;
     }
-    .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
-    .tab-btn { background: #262626; color: var(--muted); padding: 11px 8px; font-size: 14px; }
-    .tab-btn.active { background: var(--green); color: #000; }
-    .list-box { max-height: 210px; overflow-y: auto; margin-top: 8px; }
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    .tab-btn { background: #fff; color: var(--muted); padding: 10px 8px; font-size: 14px; }
+    .tab-btn.active { background: var(--sun); color: var(--ink); }
+    .list-box { max-height: 205px; overflow-y: auto; margin-top: 8px; }
     .track-item {
       display: flex; align-items: center; gap: 10px; padding: 8px 4px;
-      border-bottom: 1px solid #2c2c2c; font-size: 14px;
+      border-bottom: 2px dashed #ece6f5; font-size: 14px;
     }
-    .track-item img { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; background: #2a2a2a; }
+    .track-item img {
+      width: 42px; height: 42px; border-radius: 10px; object-fit: cover;
+      border: 2px solid var(--ink); background: #eee;
+    }
     .track-meta { flex: 1; min-width: 0; }
-    .track-title { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .track-title { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .track-artist { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .badge { background: #333; padding: 3px 8px; border-radius: 999px; font-size: 12px; color: var(--muted); }
+    .badge {
+      display: inline-block; background: var(--sun); color: var(--ink);
+      border: 2px solid var(--ink); padding: 2px 10px; border-radius: 999px;
+      font-size: 12px; font-weight: 900;
+    }
     .selected-box {
-      background: #173322; border: 1px solid var(--green); border-radius: 10px;
+      background: #e6fff7; border: 2.5px solid var(--mint-dark); border-radius: 16px;
       padding: 10px 12px; margin-top: 10px; display: flex; align-items: center; gap: 10px;
     }
-    .hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .hint { font-size: 12px; color: var(--muted); line-height: 1.5; font-weight: 700; }
 
     /* ゲーム画面 */
-    #screen-game { padding: 10px; justify-content: space-between; gap: 8px; }
-    .buzzer-row { display: grid; gap: 8px; flex: 1; }
+    #screen-game { padding: 10px; justify-content: space-between; gap: 10px; }
+    .buzzer-row { display: grid; gap: 10px; flex: 1; }
     .buzzer-row.cols-1 { grid-template-columns: 1fr; }
     .buzzer-row.cols-2 { grid-template-columns: 1fr 1fr; }
     .buzzer-btn {
       display: flex; flex-direction: column; justify-content: center; align-items: center;
-      border-radius: 16px; min-height: 115px; font-size: 20px; position: relative;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4); touch-action: none;
+      border: 3.5px solid var(--ink); border-radius: 24px; min-height: 118px;
+      font-size: 21px; font-weight: 900; color: #fff;
+      text-shadow: 0 2px 0 rgba(0,0,0,0.22);
+      box-shadow: 0 7px 0 var(--ink);
+      touch-action: none;
     }
+    .buzzer-btn:active { transform: translateY(5px); box-shadow: 0 2px 0 var(--ink); }
     .buzzer-btn.rotated { transform: rotate(180deg); }
-    .buzzer-btn.rotated:active { transform: rotate(180deg) scale(0.97); }
-    .buzzer-btn.locked { opacity: 0.25; filter: grayscale(1); }
-    .buzzer-score { font-size: 14px; margin-top: 4px; opacity: 0.92; }
-    .center-panel {
-      background: var(--card); border-radius: 16px; padding: 12px 14px; text-align: center;
+    .buzzer-btn.rotated:active { transform: rotate(180deg) translateY(5px); box-shadow: 0 2px 0 var(--ink); }
+    .buzzer-btn.locked { opacity: 0.3; filter: grayscale(0.85); }
+    .buzzer-score {
+      margin-top: 6px; font-size: 14px; font-weight: 900;
+      background: rgba(255,255,255,0.25); padding: 2px 12px; border-radius: 999px;
     }
-    .status-text { font-size: 16px; font-weight: 700; margin: 4px 0; }
+    .center-panel {
+      background: #ffffff; border: 3.5px solid var(--ink); border-radius: 24px;
+      padding: 12px 14px; text-align: center;
+      box-shadow: 0 6px 0 rgba(42,36,56,0.16);
+    }
+    .status-text { font-size: 16px; font-weight: 900; margin: 4px 0; color: var(--ink); }
+    .timer-wrap {
+      background: #f8f5ff; border: 2.5px solid var(--ink); border-radius: 16px;
+      padding: 8px 12px; margin: 6px 0;
+    }
     .timer-bar {
       display: flex; justify-content: center; align-items: baseline; gap: 14px;
-      margin: 6px 0 4px; padding: 6px 10px; border-radius: 10px; background: #141414;
       font-variant-numeric: tabular-nums;
     }
-    .timer-sec { font-size: 22px; font-weight: 800; color: #fff; }
-    .timer-pts { font-size: 18px; font-weight: 800; color: var(--gold); }
+    .timer-sec { font-size: 22px; font-weight: 900; color: var(--ink); }
+    .timer-pts { font-size: 20px; font-weight: 900; color: var(--accent); }
+    .gauge-track {
+      height: 10px; background: #e6e0f0; border: 2px solid var(--ink);
+      border-radius: 999px; overflow: hidden; margin-top: 6px;
+    }
+    .gauge-fill {
+      height: 100%; width: 100%; background: var(--mint);
+      border-radius: 999px; transition: background-color 0.2s;
+    }
 
     /* モーダル */
+    @keyframes popIn {
+      0% { transform: scale(0.82); opacity: 0; }
+      75% { transform: scale(1.03); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
     .modal {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.86); display: none;
-      align-items: center; justify-content: center; padding: 16px; z-index: 50;
+      position: fixed; inset: 0; background: rgba(42,36,56,0.72); backdrop-filter: blur(4px);
+      display: none; align-items: center; justify-content: center; padding: 16px; z-index: 50;
     }
     .modal.active { display: flex; }
     .modal-card {
-      background: #202020; border-radius: 18px; padding: 18px; width: 100%; max-width: 480px;
-      text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      background: #ffffff; border: 4px solid var(--ink); border-radius: 26px;
+      padding: 20px 18px; width: 100%; max-width: 480px; text-align: center;
+      box-shadow: 0 10px 0 rgba(42,36,56,0.28);
+      animation: popIn 0.22s ease-out;
     }
     .choice-btn {
-      width: 100%; text-align: left; margin-bottom: 8px; background: #2e2e2e;
-      padding: 12px 14px; line-height: 1.3;
+      width: 100%; text-align: left; margin-bottom: 10px; background: #fffdf7;
+      padding: 11px 12px; line-height: 1.3; display: flex; align-items: center; gap: 10px;
     }
-    .choice-sub { display: block; font-size: 12px; color: var(--muted); font-weight: 400; }
-    .album-art { width: 140px; height: 140px; border-radius: 12px; object-fit: cover; margin: 10px auto; display: block; background: #2a2a2a; }
+    .choice-letter {
+      flex-shrink: 0; width: 32px; height: 32px; border-radius: 10px;
+      border: 2px solid var(--ink); color: #fff; font-weight: 900; font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .choice-sub { display: block; font-size: 12px; color: var(--muted); font-weight: 700; }
+    .album-art {
+      width: 148px; height: 148px; border-radius: 18px; object-fit: cover;
+      margin: 10px auto; display: block; border: 3px solid var(--ink); background: #eee;
+      box-shadow: 0 5px 0 rgba(42,36,56,0.18);
+    }
     .speed-badge {
-      display: inline-block; background: #2c2614; border: 1px solid var(--gold); color: var(--gold);
-      border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 700; margin-bottom: 10px;
+      display: inline-block; background: #fff4cc; border: 2.5px solid var(--ink);
+      color: var(--ink); border-radius: 999px; padding: 4px 14px;
+      font-size: 13px; font-weight: 900; margin-bottom: 10px;
+    }
+    .rank-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 11px 14px; margin-bottom: 8px; border-radius: 16px;
+      background: #fffdf7; border: 3px solid var(--ink); font-weight: 900;
     }
   </style>
 </head>
@@ -108,42 +201,51 @@
 
 <!-- 1. ログイン画面 -->
 <section id="screen-login" class="screen active" style="justify-content:center; text-align:center;">
-  <div class="card" style="padding:28px 18px;">
-    <h1>🎵 Spotify イントロドン</h1>
-    <p class="hint" style="margin-bottom:20px;">
-      Android 1台で対面早押し対戦！<br>
-      スピード得点制・低遅延早押し・自動再生・曲数無制限
+  <div class="card" style="padding:28px 20px;">
+    <div style="font-size:44px; margin-bottom:4px;">🎵✨</div>
+    <h1 class="logo-title">Spotify イントロドン！</h1>
+    <p class="hint" style="margin-bottom:18px;">
+      Android 1台でワイワイ早押しバトル！<br>
+      スピード得点制・自動再生・曲数無制限
     </p>
-    <button class="btn-green" style="width:100%; font-size:17px;" onclick="loginSpotify()">
-      Spotify でログイン
+
+    <div id="client-id-box" style="text-align:left; margin-bottom:14px;">
+      <label class="hint" style="display:block; margin-bottom:4px;">
+        🔑 Spotify Client ID（一度入力すれば記憶されます）
+      </label>
+      <input type="text" id="client-id-input" placeholder="Spotify DeveloperのClient IDを貼り付け" />
+    </div>
+
+    <button class="btn-pop" style="width:100%; font-size:18px; padding:14px;" onclick="loginSpotify()">
+      ▶ Spotify でログイン
     </button>
-    <p id="login-error" class="hint" style="color:#ff6b6b; margin-top:12px;"></p>
+    <p id="login-error" class="hint" style="color:var(--accent-dark); margin-top:12px;"></p>
   </div>
 </section>
 
 <!-- 2. セットアップ画面 -->
 <section id="screen-setup" class="screen">
   <div class="row" style="justify-content:space-between; margin-bottom:10px;">
-    <h2 style="margin:0;">🎵 クイズ準備</h2>
+    <h2 style="margin:0; font-size:22px;">🎉 クイズ準備</h2>
     <button class="btn-sm" onclick="logoutSpotify()">ログアウト</button>
   </div>
 
   <!-- 出題ソース切替タブ -->
   <div class="tabs">
     <button id="tab-direct" class="tab-btn active" onclick="switchSourceTab('direct')">
-      🌍 プレイリスト直再生<br><span style="font-size:11px; font-weight:400;">他人・公式OK / 無制限</span>
+      🌍 プレイリスト直再生<br><span style="font-size:11px;">他人・公式OK / 無制限</span>
     </button>
     <button id="tab-custom" class="tab-btn" onclick="switchSourceTab('custom')">
-      📝 曲リストを自作<br><span style="font-size:11px; font-weight:400;">自分の曲・全曲読込</span>
+      📝 曲リストを自作<br><span style="font-size:11px;">自分の曲・全曲読込</span>
     </button>
   </div>
 
   <!-- モードA：プレイリスト直再生 -->
   <div id="panel-direct">
     <div class="card">
-      <h3>プレイリストを選ぶ（どれでもOK）</h3>
+      <h3>🎧 プレイリストを選ぶ</h3>
 
-      <label class="hint">① ライブラリ（フォロー中の他人・公式含む）から選択</label>
+      <label class="hint">① ライブラリ（フォロー中の他人・公式含む）</label>
       <div class="row" style="margin:4px 0 12px;">
         <select id="direct-playlist-select" style="flex:1;" onchange="onDirectSelectChange()"></select>
       </div>
@@ -151,19 +253,20 @@
       <label class="hint">② Spotify上のプレイリストを検索</label>
       <div class="row" style="margin:4px 0 6px;">
         <input type="text" id="pl-search-input" placeholder="例：平成ヒット、アニソン、J-POP..." style="flex:1;" />
-        <button class="btn-sm" onclick="searchPlaylists()">検索</button>
+        <button class="btn-sky btn-sm" onclick="searchPlaylists()">検索</button>
       </div>
       <div id="pl-search-results" class="list-box"></div>
 
-      <label class="hint" style="display:block; margin-top:10px;">③ Spotifyの共有リンク（URL）を直接貼る</label>
+      <label class="hint" style="display:block; margin-top:10px;">③ Spotifyの共有リンク（URL）を貼る</label>
       <div class="row" style="margin-top:4px;">
         <input type="text" id="pl-url-input" placeholder="https://open.spotify.com/playlist/..." style="flex:1;" />
-        <button class="btn-sm" onclick="loadPlaylistByUrl()">設定</button>
+        <button class="btn-sun btn-sm" onclick="loadPlaylistByUrl()">設定</button>
       </div>
 
       <div id="direct-selected-view" class="selected-box" style="display:none;">
+        <div style="font-size:24px;">✅</div>
         <div class="track-meta">
-          <div style="font-size:11px; color:var(--green); font-weight:700;">選択中のプレイリスト</div>
+          <div style="font-size:11px; color:var(--mint-dark); font-weight:900;">選択中のプレイリスト</div>
           <div id="direct-selected-name" class="track-title"></div>
           <div id="direct-selected-sub" class="track-artist"></div>
         </div>
@@ -174,17 +277,17 @@
   <!-- モードB：カスタム曲リスト -->
   <div id="panel-custom" style="display:none;">
     <div class="card">
-      <h3>1. 曲をリストに追加する（曲数無制限）</h3>
+      <h3>1. 曲を追加する（曲数無制限）</h3>
       <div class="row" style="margin-bottom:8px;">
         <select id="custom-playlist-select" style="flex:1;"></select>
-        <button id="btn-load-all" class="btn-green btn-sm" onclick="loadSelectedPlaylistAll()">全曲読込</button>
-        <button id="btn-cancel-load" class="btn-danger btn-sm" style="display:none;" onclick="cancelLoading()">停止</button>
+        <button id="btn-load-all" class="btn-pop btn-sm" onclick="loadSelectedPlaylistAll()">全曲読込</button>
+        <button id="btn-cancel-load" class="btn-pink btn-sm" style="display:none;" onclick="cancelLoading()">停止</button>
       </div>
-      <div id="load-progress" class="hint" style="color:var(--green); margin-bottom:6px;"></div>
+      <div id="load-progress" class="hint" style="color:var(--mint-dark); margin-bottom:6px;"></div>
 
       <div class="row">
-        <input type="text" id="search-input" placeholder="曲名・アーティスト名で検索して追加..." style="flex:1;" />
-        <button class="btn-sm" onclick="searchTracks()">検索</button>
+        <input type="text" id="search-input" placeholder="曲名・アーティスト名で検索..." style="flex:1;" />
+        <button class="btn-sky btn-sm" onclick="searchTracks()">検索</button>
       </div>
       <div id="search-results" class="list-box"></div>
     </div>
@@ -192,7 +295,7 @@
     <div class="card">
       <div class="row" style="justify-content:space-between;">
         <h3 style="margin:0;">2. 出題リスト <span id="pool-count" class="badge">0曲</span></h3>
-        <button class="btn-sm btn-danger" onclick="clearPool()">全削除</button>
+        <button class="btn-pink btn-sm" onclick="clearPool()">全削除</button>
       </div>
       <div id="pool-list" class="list-box"></div>
     </div>
@@ -200,7 +303,7 @@
 
   <!-- 対戦ルール -->
   <div class="card">
-    <h3>対戦ルール</h3>
+    <h3>⚡ 対戦ルール</h3>
     <div class="row" style="margin-bottom:8px;">
       <label style="flex:1;">
         <span class="hint">プレイヤー人数</span>
@@ -208,14 +311,14 @@
           <option value="2" selected>2人（対面）</option>
           <option value="3">3人（対面）</option>
           <option value="4">4人（対面）</option>
-          <option value="1">1人（練習モード）</option>
+          <option value="1">1人（練習）</option>
         </select>
       </label>
       <label style="flex:1;">
-        <span class="hint">正誤判定の方法</span>
+        <span class="hint">正誤判定</span>
         <select id="opt-mode">
-          <option value="choice" selected>4択クイズ（自動判定）</option>
-          <option value="text">曲名入力（あいまい判定）</option>
+          <option value="choice" selected>4択クイズ</option>
+          <option value="text">曲名入力</option>
         </select>
       </label>
     </div>
@@ -223,7 +326,7 @@
       <label style="flex:1;">
         <span class="hint">得点方式</span>
         <select id="opt-scoring">
-          <option value="speed" selected>スピード制（100点〜10点）</option>
+          <option value="speed" selected>スピード制（100〜10点）</option>
           <option value="fixed">シンプル（1問 1点）</option>
         </select>
       </label>
@@ -238,14 +341,14 @@
         </select>
       </label>
     </div>
-    <label style="display:flex; align-items:center; gap:6px; font-size:13px;">
+    <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:800;">
       <input type="checkbox" id="opt-autoplay" checked style="width:18px; height:18px;" />
       次の問題へ進んだら自動で曲を再生する
     </label>
   </div>
 
-  <button class="btn-green" style="width:100%; padding:16px; font-size:18px;" onclick="startGame()">
-    ゲームスタート！
+  <button class="btn-pink" style="width:100%; padding:16px; font-size:20px;" onclick="startGame()">
+    🚀 ゲームスタート！
   </button>
   <p class="hint" style="text-align:center; margin-top:8px;">
     ※開始前にSpotifyアプリで1秒だけ再生→停止しておくとスムーズです。
@@ -262,15 +365,20 @@
       <button class="btn-sm" onclick="finishOrAbortGame()">結果を見て終了</button>
     </div>
 
-    <div class="timer-bar">
-      <span id="timer-sec" class="timer-sec">⏱ 0.00 秒</span>
-      <span id="timer-pts" class="timer-pts">+100 点</span>
+    <div class="timer-wrap">
+      <div class="timer-bar">
+        <span id="timer-sec" class="timer-sec">⏱ 0.00 秒</span>
+        <span id="timer-pts" class="timer-pts">+100 点</span>
+      </div>
+      <div class="gauge-track">
+        <div id="timer-gauge" class="gauge-fill"></div>
+      </div>
     </div>
 
     <div id="game-status" class="status-text">準備中...</div>
     <div class="row" style="justify-content:center; margin-top:6px;">
-      <button id="btn-play" class="btn-green" style="display:none;" onclick="playCurrentQuestion()">▶ イントロ再生</button>
-      <button id="btn-giveup" class="btn-sm" onclick="giveUpQuestion()" disabled>パス / 正解を見る</button>
+      <button id="btn-play" class="btn-pop btn-sm" style="display:none;" onclick="playCurrentQuestion()">▶ イントロ再生</button>
+      <button id="btn-giveup" class="btn-sun btn-sm" onclick="giveUpQuestion()" disabled>パス / 正解を見る</button>
     </div>
   </div>
 
@@ -279,12 +387,13 @@
 
 <!-- 4. 最終結果画面 -->
 <section id="screen-finish" class="screen" style="justify-content:center; text-align:center;">
-  <div class="card" style="padding:24px;">
-    <h1>🏆 結果発表</h1>
+  <div class="card" style="padding:24px 18px;">
+    <div style="font-size:44px; margin-bottom:4px;">🏆🎉</div>
+    <h1 class="logo-title" style="font-size:28px;">結果発表！</h1>
     <div id="final-ranking" style="margin:16px 0; text-align:left;"></div>
-    <div class="row" style="justify-content:center;">
-      <button class="btn-green" onclick="startGame()">もう一回遊ぶ</button>
-      <button onclick="showScreen('setup')">曲選びに戻る</button>
+    <div class="row" style="justify-content:center; gap:10px;">
+      <button class="btn-pink" onclick="startGame()">もう一回遊ぶ！</button>
+      <button class="btn-sun" onclick="showScreen('setup')">曲選びに戻る</button>
     </div>
   </div>
 </section>
@@ -292,12 +401,12 @@
 <!-- 回答モーダル -->
 <div id="modal-answer" class="modal">
   <div class="modal-card">
-    <h2 id="ans-player-title">プレイヤー1 の回答権！</h2>
+    <h2 id="ans-player-title" style="font-size:22px;">回答権！</h2>
     <div id="ans-time-badge" class="speed-badge">⏱ 0.00秒（正解で +100点）</div>
     <div id="ans-choice-area"></div>
     <div id="ans-text-area" style="display:none;">
       <input type="text" id="ans-text-input" placeholder="曲名を入力（ひらがな・英語OK）" autocomplete="off" />
-      <button id="btn-text-submit" class="btn-green" style="width:100%; margin-top:10px;" onclick="submitTextAnswer()">回答する！</button>
+      <button id="btn-text-submit" class="btn-pop" style="width:100%; margin-top:10px;" onclick="submitTextAnswer()">回答する！</button>
     </div>
   </div>
 </div>
@@ -305,20 +414,20 @@
 <!-- 正解発表モーダル -->
 <div id="modal-reveal" class="modal">
   <div class="modal-card">
-    <h2 id="reveal-heading">⭕ 正解！</h2>
+    <h2 id="reveal-heading" style="font-size:22px;">⭕ 正解！</h2>
     <div id="reveal-speed-badge" class="speed-badge" style="display:none;"></div>
     <img id="reveal-img" class="album-art" src="" alt="" />
-    <div id="reveal-title" style="font-size:19px; font-weight:700;"></div>
+    <div id="reveal-title" style="font-size:20px; font-weight:900;"></div>
     <div id="reveal-artist" class="hint" style="font-size:14px; margin-bottom:14px;"></div>
-    <button class="btn-green" style="width:100%;" onclick="nextRound()">次の問題へ ➔</button>
+    <button class="btn-pink" style="width:100%; font-size:17px;" onclick="nextRound()">次の問題へ ➔</button>
   </div>
 </div>
 
 <script>
   // ==========================================
-  // ★ここにSpotify DeveloperのClient IDを貼り付け
+  // ★直接ここに貼ってもOK / そのままなら画面から入力できます
   // ==========================================
-  const CLIENT_ID = "f3db95d96e6c4eb4b8b2c570b1311828";
+  const DEFAULT_CLIENT_ID = "f3db95d96e6c4eb4b8b2c570b1311828";
 
   const REDIRECT_URI = window.location.origin + window.location.pathname;
   const SCOPES = [
@@ -330,12 +439,14 @@
     "user-library-read"
   ].join(" ");
 
-  const PLAYER_COLORS = ["#e53935", "#1e88e5", "#43a047", "#fb8c00"];
-  const PLAYER_NAMES = ["赤 (P1)", "青 (P2)", "緑 (P3)", "橙 (P4)"];
+  const PLAYER_COLORS = ["#ff4d79", "#00b4d8", "#2ec4b6", "#ff9f1c"];
+  const PLAYER_NAMES = ["🍓 P1", "🐬 P2", "🍈 P3", "🍊 P4"];
+  const CHOICE_LETTERS = ["A", "B", "C", "D"];
+  const CHOICE_COLORS = ["#ff4d79", "#00b4d8", "#2ec4b6", "#ff9f1c"];
 
   let myUserId = "";
-  let cachedDeviceId = null; // ラグ削減用デバイスIDキャッシュ
-  let sourceMode = "direct"; // "direct" | "custom"
+  let cachedDeviceId = null;
+  let sourceMode = "direct";
   let libraryPlaylists = [];
   let selectedDirectPlaylist = null;
   let quizPool = [];
@@ -344,6 +455,19 @@
   let game = null;
   let audioCtx = null;
   let timerRafId = null;
+
+  function getClientId() {
+    if (DEFAULT_CLIENT_ID && DEFAULT_CLIENT_ID !== "YOUR_SPOTIFY_CLIENT_ID") {
+      return DEFAULT_CLIENT_ID.trim();
+    }
+    const inputEl = document.getElementById("client-id-input");
+    const typed = inputEl ? inputEl.value.trim() : "";
+    if (typed) {
+      localStorage.setItem("sp_saved_client_id", typed);
+      return typed;
+    }
+    return (localStorage.getItem("sp_saved_client_id") || "").trim();
+  }
 
   // ---------- 効果音 ----------
   function playTone(type) {
@@ -356,24 +480,23 @@
         const gain = audioCtx.createGain();
         osc.type = wave;
         osc.frequency.setValueAtTime(freq, start);
-        gain.gain.setValueAtTime(0.25, start);
+        gain.gain.setValueAtTime(0.24, start);
         gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
         osc.start(start);
         osc.stop(start + dur);
       };
-      if (type === "buzz") beep(880, now, 0.14, "triangle");
-      if (type === "correct") { beep(1046, now, 0.14); beep(1318, now + 0.13, 0.35); }
-      if (type === "wrong") { beep(180, now, 0.18, "sawtooth"); beep(150, now + 0.2, 0.3, "sawtooth"); }
+      if (type === "buzz") { beep(880, now, 0.1, "triangle"); beep(1174, now + 0.08, 0.12, "triangle"); }
+      if (type === "correct") { beep(1046, now, 0.12); beep(1318, now + 0.11, 0.12); beep(1568, now + 0.22, 0.3); }
+      if (type === "wrong") { beep(200, now, 0.16, "sawtooth"); beep(155, now + 0.18, 0.28, "sawtooth"); }
     } catch (e) {}
   }
 
-  // ---------- 秒数→点数 計算 ----------
+  // ---------- 秒数→点数 & ゲージ ----------
   function calcPointsForElapsed(ms, scoringMode) {
     if (scoringMode === "fixed") return 1;
     const sec = ms / 1000;
-    // 1.0秒以内は100点、その後1秒ごとに5点減少、最低10点
     return Math.max(10, Math.round(100 - Math.max(0, sec - 1.0) * 5));
   }
 
@@ -393,15 +516,23 @@
     document.getElementById("timer-sec").textContent = `⏱ ${secStr} 秒`;
     document.getElementById("timer-pts").textContent =
       game.scoringMode === "speed" ? `+${pts} 点` : `+1 点`;
+
+    const gauge = document.getElementById("timer-gauge");
+    if (game.scoringMode === "speed") {
+      const pct = Math.max(6, Math.round(((pts - 10) / 90) * 100));
+      gauge.style.width = `${pct}%`;
+      gauge.style.backgroundColor = pts >= 75 ? "#16c79a" : (pts >= 40 ? "#ffbe0b" : "#ff4d79");
+    } else {
+      gauge.style.width = "100%";
+      gauge.style.backgroundColor = "#00b4d8";
+    }
   }
 
   function startTimerLoop() {
     stopTimerLoop();
     const tick = () => {
       updateTimerDisplay();
-      if (game && game.state === "PLAYING") {
-        timerRafId = requestAnimationFrame(tick);
-      }
+      if (game && game.state === "PLAYING") timerRafId = requestAnimationFrame(tick);
     };
     timerRafId = requestAnimationFrame(tick);
   }
@@ -428,15 +559,16 @@
   }
 
   async function loginSpotify() {
-    if (!CLIENT_ID || CLIENT_ID === "YOUR_SPOTIFY_CLIENT_ID") {
-      document.getElementById("login-error").textContent = "コード内の CLIENT_ID を書き換えてから開いてください。";
+    const cid = getClientId();
+    if (!cid) {
+      document.getElementById("login-error").textContent = "上の入力欄に Spotify Client ID を貼り付けてからログインを押してください。";
       return;
     }
     const verifier = generateRandomString(64);
     const challenge = base64url(await sha256(verifier));
     localStorage.setItem("sp_code_verifier", verifier);
     const params = new URLSearchParams({
-      client_id: CLIENT_ID,
+      client_id: cid,
       response_type: "code",
       redirect_uri: REDIRECT_URI,
       scope: SCOPES,
@@ -447,12 +579,13 @@
   }
 
   async function exchangeToken(code) {
+    const cid = getClientId();
     const verifier = localStorage.getItem("sp_code_verifier");
     const res = await fetch("https://accounts.spotify.com/api/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        client_id: CLIENT_ID,
+        client_id: cid,
         grant_type: "authorization_code",
         code,
         redirect_uri: REDIRECT_URI,
@@ -466,13 +599,14 @@
   }
 
   async function refreshAccessToken() {
+    const cid = getClientId();
     const refresh = localStorage.getItem("sp_refresh_token");
-    if (!refresh) return false;
+    if (!refresh || !cid) return false;
     const res = await fetch("https://accounts.spotify.com/api/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        client_id: CLIENT_ID,
+        client_id: cid,
         grant_type: "refresh_token",
         refresh_token: refresh
       })
@@ -551,6 +685,13 @@
   }
 
   async function init() {
+    if (DEFAULT_CLIENT_ID && DEFAULT_CLIENT_ID !== "YOUR_SPOTIFY_CLIENT_ID") {
+      document.getElementById("client-id-box").style.display = "none";
+    } else {
+      const saved = localStorage.getItem("sp_saved_client_id");
+      if (saved) document.getElementById("client-id-input").value = saved;
+    }
+
     document.getElementById("ans-text-input").addEventListener("keydown", e => {
       if (e.key === "Enter") submitTextAnswer();
     });
@@ -583,7 +724,6 @@
   async function setupUserData() {
     const me = await spotifyFetch("/me");
     myUserId = me.id;
-    // デバイスIDを裏で先読みしておく（開始時のラグ削減）
     refreshDeviceId().catch(() => {});
 
     libraryPlaylists = [];
@@ -627,7 +767,7 @@
     renderPool();
   }
 
-  // ---------- モードA：他人・公式プレイリスト選択 ----------
+  // ---------- モードA：プレイリスト選択 ----------
   function setSelectedDirectPlaylist(pl) {
     selectedDirectPlaylist = pl;
     document.getElementById("direct-selected-view").style.display = "flex";
@@ -651,7 +791,7 @@
       const data = await spotifyFetch(`/search?q=${encodeURIComponent(q)}&type=playlist&limit=10`);
       const items = (data.playlists?.items || []).filter(p => p && p.id && p.uri);
       if (!items.length) {
-        box.innerHTML = `<div class="hint">見つかりませんでした。Spotifyアプリから共有リンクをコピーして下のURL欄に貼ることもできます。</div>`;
+        box.innerHTML = `<div class="hint">見つかりませんでした。下のURL欄にSpotify共有リンクを貼ることもできます。</div>`;
         return;
       }
       box.innerHTML = "";
@@ -669,17 +809,17 @@
           </div>
         `;
         const btn = document.createElement("button");
-        btn.className = "btn-green btn-sm";
+        btn.className = "btn-pop btn-sm";
         btn.textContent = "選択";
         btn.onclick = () => {
           setSelectedDirectPlaylist({ id: p.id, uri: p.uri, name: p.name, owner, total });
-          box.innerHTML = `<div class="hint" style="color:var(--green);">「${escapeHtml(p.name)}」を選択しました！</div>`;
+          box.innerHTML = `<div class="hint" style="color:var(--mint-dark);">「${escapeHtml(p.name)}」を選択しました！</div>`;
         };
         row.appendChild(btn);
         box.appendChild(row);
       });
     } catch (e) {
-      box.innerHTML = `<div class="hint" style="color:#ff6b6b;">検索エラー: ${escapeHtml(e.message)}</div>`;
+      box.innerHTML = `<div class="hint" style="color:var(--accent-dark);">検索エラー: ${escapeHtml(e.message)}</div>`;
     }
   }
 
@@ -705,7 +845,7 @@
     document.getElementById("pl-url-input").value = "";
   }
 
-    // ---------- モードB：カスタム曲リスト ----------
+  // ---------- モードB：カスタム曲リスト ----------
   function toTrackObj(t) {
     if (!t || t.type !== "track" || !t.uri) return null;
     return {
@@ -786,7 +926,7 @@
           </div>
         `;
         const btn = document.createElement("button");
-        btn.className = "btn-green btn-sm";
+        btn.className = "btn-pop btn-sm";
         btn.textContent = "＋追加";
         btn.onclick = () => {
           if (!quizPool.some(x => x.id === t.id)) quizPool.push(t);
@@ -798,7 +938,7 @@
         box.appendChild(row);
       });
     } catch (e) {
-      box.innerHTML = `<div class="hint" style="color:#ff6b6b;">検索エラー: ${escapeHtml(e.message)}</div>`;
+      box.innerHTML = `<div class="hint" style="color:var(--accent-dark);">検索エラー: ${escapeHtml(e.message)}</div>`;
     }
   }
 
@@ -863,7 +1003,6 @@
     return id;
   }
 
-  // デバイスIDキャッシュ切れ時だけ自動リトライ（通常は1往復で完了）
   async function withDeviceRetry(fn) {
     const id = await requireDeviceId();
     try {
@@ -889,7 +1028,6 @@
 
   async function triggerDirectPlaylistStart(playlist) {
     await withDeviceRetry(async id => {
-      // シャッフルONは待たずに並列送信してラグ削減
       spotifyFetch(`/me/player/shuffle?state=true&device_id=${encodeURIComponent(id)}`, { method: "PUT" }).catch(() => {});
       const body = { context_uri: playlist.uri, position_ms: 0 };
       if (playlist.total && playlist.total > 1) {
@@ -920,19 +1058,22 @@
     );
   }
 
-  // 軽量な /currently-playing を短間隔ポーリングして曲情報と正確な再生位置を取得
   async function fetchCurrentTrackInBg(prevTrackId, roundToken) {
     let lastTrack = null;
+    let nudgedPlay = false;
     for (let i = 0; i < 16; i++) {
       await sleep(i < 4 ? 180 : 300);
       if (!game || game.roundToken !== roundToken) return null;
       try {
         const st = await spotifyFetch("/me/player/currently-playing");
+        if (st && st.is_playing === false && !nudgedPlay && game.state === "PLAYING") {
+          nudgedPlay = true;
+          resumePlaybackFast();
+        }
         const t = toTrackObj(st?.item);
         if (t) {
           lastTrack = t;
           if (!prevTrackId || t.id !== prevTrackId) {
-            // 再生中かつ未お手つきなら、Spotify側の実再生位置(progress_ms)でタイマーを精密補正
             if (game && game.roundToken === roundToken && game.state === "PLAYING" && game.lockedOut.size === 0) {
               if (typeof st.progress_ms === "number" && st.progress_ms >= 0 && st.progress_ms < 20000) {
                 game.elapsedMs = st.progress_ms;
@@ -947,7 +1088,6 @@
     return lastTrack;
   }
 
-  // 最速一時停止（キャッシュ済みデバイスIDを使って即送信・awaitなし）
   function pausePlaybackFast() {
     const qs = cachedDeviceId ? `?device_id=${encodeURIComponent(cachedDeviceId)}` : "";
     spotifyFetch(`/me/player/pause${qs}`, { method: "PUT", keepalive: true }).catch(() => {});
@@ -961,7 +1101,6 @@
     } catch (e) {}
   }
 
-  // 4択ダミー選択肢生成
   async function generateDirectChoices(correctTrack, historyTracks) {
     const dummies = [];
     const usedNames = new Set([normalizeText(correctTrack.name)]);
@@ -1081,7 +1220,7 @@
     if (game.autoPlay) {
       playCurrentQuestion();
     } else {
-      document.getElementById("game-status").textContent = "「イントロ再生」を押してスタート";
+      document.getElementById("game-status").textContent = "「イントロ再生」を押してスタート！";
       document.getElementById("btn-play").style.display = "inline-block";
     }
   }
@@ -1100,7 +1239,6 @@
       btn.style.background = PLAYER_COLORS[idx];
       btn.disabled = game.state !== "PLAYING" || game.lockedOut.has(idx);
       btn.innerHTML = `<span>${PLAYER_NAMES[idx]}</span><span class="buzzer-score">${game.scores[idx]} 点</span>`;
-      // pointerdown で指が触れた瞬間に最速反応
       btn.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         onBuzz(idx);
@@ -1148,7 +1286,7 @@
     stopTimerLoop();
     updateTimerDisplay();
 
-    document.getElementById("game-status").textContent = "🎵 Spotifyで曲を準備中...";
+    document.getElementById("game-status").textContent = "🎵 曲をスタンバイ中...";
     document.getElementById("btn-play").disabled = true;
 
     try {
@@ -1162,15 +1300,13 @@
         }
         if (!game || game.roundToken !== token) return;
 
-        // 再生コマンドが通った瞬間に早押し開始＆タイマースタート（待ち時間ゼロ化）
         game.state = "PLAYING";
         game.elapsedMs = 0;
         game.playingSince = Date.now();
-        document.getElementById("game-status").textContent = "🎵 再生中！早押しスタート！";
+        document.getElementById("game-status").textContent = "🔥 再生中！早く押した人が勝ち！";
         renderGameUI();
         startTimerLoop();
 
-        // 裏で曲情報と4択ダミーを並列取得
         game.currentTrack = null;
         game.trackReadyPromise = fetchCurrentTrackInBg(prevId, token).then(track => {
           if (track && game && game.roundToken === token) {
@@ -1202,7 +1338,7 @@
         game.state = "PLAYING";
         game.elapsedMs = 0;
         game.playingSince = Date.now();
-        document.getElementById("game-status").textContent = "🎵 再生中！早押しスタート！";
+        document.getElementById("game-status").textContent = "🔥 再生中！早く押した人が勝ち！";
         renderGameUI();
         startTimerLoop();
       }
@@ -1220,10 +1356,8 @@
   function onBuzz(playerIdx) {
     if (!game || game.state !== "PLAYING" || game.lockedOut.has(playerIdx)) return;
 
-    // 1. 最優先でSpotifyへ一時停止命令を発火（ラグ最小化）
     pausePlaybackFast();
 
-    // 2. 押した瞬間の秒数と予定得点を即ロック
     const lockedMs = getElapsedMs();
     game.elapsedMs = lockedMs;
     game.playingSince = null;
@@ -1247,8 +1381,8 @@
     const secStr = (game.buzzedMs / 1000).toFixed(2);
     document.getElementById("ans-time-badge").textContent =
       game.scoringMode === "speed"
-        ? `⏱ ${secStr} 秒で早押し！（正解で +${game.buzzedPoints} 点）`
-        : `⏱ ${secStr} 秒で早押し！（正解で +1 点）`;
+        ? `⏱ ${secStr} 秒！（正解で +${game.buzzedPoints} 点）`
+        : `⏱ ${secStr} 秒！（正解で +1 点）`;
 
     const choiceArea = document.getElementById("ans-choice-area");
     const textArea = document.getElementById("ans-text-area");
@@ -1261,7 +1395,7 @@
 
       const track = game.currentTrack || await game.trackReadyPromise;
       if (!track) {
-        choiceArea.innerHTML = `<div class="hint" style="color:#ff6b6b;">曲情報の取得に失敗しました。パスしてください。</div>`;
+        choiceArea.innerHTML = `<div class="hint" style="color:var(--accent-dark);">曲情報の取得に失敗しました。パスしてください。</div>`;
         return;
       }
       if (!game.choicesPromise) {
@@ -1269,25 +1403,159 @@
       }
       const options = await game.choicesPromise;
       choiceArea.innerHTML = "";
-      options.forEach(opt => {
+      options.forEach((opt, i) => {
         const btn = document.createElement("button");
         btn.className = "choice-btn";
-        btn.innerHTML = `${escapeHtml(opt.name)}<span cla
+        btn.innerHTML = `
+          <span class="choice-letter" style="background:${CHOICE_COLORS[i]};">${CHOICE_LETTERS[i]}</span>
+          <span style="flex:1; min-width:0;">
+            <span style="display:block; font-weight:900;">${escapeHtml(opt.name)}</span>
+            <span class="choice-sub">${escapeHtml(opt.artist)}</span>
+          </span>
+        `;
+        btn.onclick = () => judgeAnswer(opt.id === track.id);
+        choiceArea.appendChild(btn);
+      });
+    } else {
+      choiceArea.style.display = "none";
+      textArea.style.display = "block";
+      const input = document.getElementById("ans-text-input");
+      const submitBtn = document.getElementById("btn-text-submit");
+      input.value = "";
+      submitBtn.disabled = !game.currentTrack;
+      if (!game.currentTrack) {
+        submitBtn.textContent = "曲情報を取得中...";
+        await game.trackReadyPromise;
+        submitBtn.textContent = "回答する！";
+        submitBtn.disabled = false;
+      }
+      setTimeout(() => input.focus(), 80);
+    }
+  }
 
-        
+  function normalizeText(str) {
+    return str
+      .normalize("NFKC")
+      .toLowerCase()
+      .replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60))
+      .replace(/[()（）【】\[\]「」『』・\-~!！?？'".,、。\s]/g, "");
+  }
+  function stripSubtitle(str) {
+    return str
+      .replace(/\s*[\(（\[【].*?[\)）\]】]/g, "")
+      .replace(/\s*[-–—]\s*(remaster|live|acoustic|ver|version|edit|feat|ft).*$/i, "");
+  }
+
+  function submitTextAnswer() {
+    const raw = document.getElementById("ans-text-input").value.trim();
+    if (!raw || !game.currentTrack) return;
+    const track = game.currentTrack;
+    const userNorm = normalizeText(raw);
+    const fullNorm = normalizeText(track.name);
+    const shortNorm = normalizeText(stripSubtitle(track.name));
+    judgeAnswer(userNorm.length > 0 && (userNorm === fullNorm || userNorm === shortNorm));
+  }
+
+  async function judgeAnswer(isCorrect) {
+    document.getElementById("modal-answer").classList.remove("active");
+    if (isCorrect) {
+      playTone("correct");
+      const pts = game.buzzedPoints;
+      const secStr = (game.buzzedMs / 1000).toFixed(2);
+      game.scores[game.activePlayer] += pts;
+      showReveal(
+        `🎉 ${PLAYER_NAMES[game.activePlayer]} 正解！`,
+        `⏱ ${secStr} 秒　/　+${pts} 点ゲット！`
+      );
+    } else {
+      playTone("wrong");
+      game.lockedOut.add(game.activePlayer);
+      if (game.lockedOut.size >= game.playerCount) {
+        showReveal("💥 全員お手つき！正解はこちら", null);
+      } else {
+        document.getElementById("game-status").textContent =
+          `💦 ${PLAYER_NAMES[game.activePlayer]} 不正解！曲を再開します`;
+        await resumePlaybackFast();
+        game.state = "PLAYING";
+        game.playingSince = Date.now();
+        renderGameUI();
+        startTimerLoop();
+      }
+    }
+  }
+
+  async function giveUpQuestion() {
+    pausePlaybackFast();
+    stopTimerLoop();
+    game.playingSince = null;
+    if (!game.currentTrack && game.trackReadyPromise) {
+      await game.trackReadyPromise;
+    }
+    showReveal("⏭ 正解はこちら！", null);
+  }
+
+  function showReveal(heading, speedText) {
+    game.state = "REVEAL";
+    stopTimerLoop();
+    const track = game.currentTrack;
+    document.getElementById("reveal-heading").textContent = heading;
+    const badge = document.getElementById("reveal-speed-badge");
+    if (speedText) {
+      badge.textContent = speedText;
+      badge.style.display = "inline-block";
+    } else {
+      badge.style.display = "none";
+    }
+    document.getElementById("reveal-img").src = track?.image || "";
+    document.getElementById("reveal-title").textContent = track?.name || "（曲情報を取得できませんでした）";
+    document.getElementById("reveal-artist").textContent = track?.artist || "";
+    document.getElementById("modal-reveal").classList.add("active");
+    renderGameUI();
+  }
+
+  function nextRound() {
+    document.getElementById("modal-reveal").classList.remove("active");
+    game.round++;
+    if (game.round >= game.maxRounds) {
+      finishGame();
+      return;
+    }
+    game.state = "READY";
+    game.lockedOut = new Set();
+    game.activePlayer = null;
+    game.elapsedMs = 0;
+    game.playingSince = null;
+    updateTimerDisplay();
+    renderGameUI();
+
+    if (game.autoPlay) {
+      playCurrentQuestion();
+    } else {
+      document.getElementById("game-status").textContent = "「イントロ再生」を押して次の曲へ！";
+      document.getElementById("btn-play").style.display = "inline-block";
+    }
+  }
+
+  function finishOrAbortGame() {
+    if (confirm("現在の得点でゲームを終了して結果発表へ進みますか？")) {
+      finishGame();
+    }
+  }
+
   function finishGame() {
     pausePlaybackFast();
     stopTimerLoop();
     document.getElementById("modal-answer").classList.remove("active");
     document.getElementById("modal-reveal").classList.remove("active");
+    const medals = ["👑", "🥈", "🥉", "🎵"];
     const ranked = game.scores
       .map((score, idx) => ({ name: PLAYER_NAMES[idx], color: PLAYER_COLORS[idx], score }))
       .sort((a, b) => b.score - a.score);
     document.getElementById("final-ranking").innerHTML = ranked
       .map((r, i) => `
-        <div class="row" style="justify-content:space-between; padding:10px 12px; margin-bottom:6px; border-radius:10px; background:#2a2a2a; border-left:6px solid ${r.color};">
-          <strong>${i + 1}位　${r.name}</strong>
-          <strong style="font-size:18px;">${r.score} 点</strong>
+        <div class="rank-row" style="border-left:10px solid ${r.color};">
+          <span>${medals[i] || "🎵"} ${i + 1}位　${r.name}</span>
+          <span style="font-size:20px; color:${r.color};">${r.score} 点</span>
         </div>
       `).join("");
     showScreen("finish");
