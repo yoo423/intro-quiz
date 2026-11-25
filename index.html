@@ -327,7 +327,7 @@
       <label style="flex:1;">
         <span class="hint">得点方式</span>
         <select id="opt-scoring">
-          <option value="speed" selected>スピード制（100〜10点）</option>
+          <option value="speed" selected>スピード制（100〜20点）</option>
           <option value="fixed">シンプル（1問 1点）</option>
         </select>
       </label>
@@ -504,8 +504,9 @@
   // ---------- 秒数→点数 & ゲージ ----------
   function calcPointsForElapsed(ms, scoringMode) {
     if (scoringMode === "fixed") return 1;
-    const sec = ms / 1000;
-    return Math.max(10, Math.round(100 - Math.max(0, sec - 1.0) * 5));
+    const sec = Math.max(0, ms / 1000);
+    // 0.35 を大きくするとさらにシビア、小さくすると緩やかになります
+    return Math.max(20, Math.round(20 + 80 * Math.exp(-0.35 * sec)));
   }
 
   function getElapsedMs() {
@@ -527,9 +528,9 @@
 
     const gauge = document.getElementById("timer-gauge");
     if (game.scoringMode === "speed") {
-      const pct = Math.max(6, Math.round(((pts - 10) / 90) * 100));
+      const pct = Math.max(6, Math.round(((pts - 20) / 80) * 100));
       gauge.style.width = `${pct}%`;
-      gauge.style.backgroundColor = pts >= 75 ? "#16c79a" : (pts >= 40 ? "#ffbe0b" : "#ff4d79");
+      gauge.style.backgroundColor = pts >= 70 ? "#16c79a" : (pts >= 40 ? "#ffbe0b" : "#ff4d79");
     } else {
       gauge.style.width = "100%";
       gauge.style.backgroundColor = "#00b4d8";
