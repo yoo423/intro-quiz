@@ -131,6 +131,10 @@
       box-shadow: 0 6px 0 rgba(42,36,56,0.16);
     }
     .status-text { font-size: 16px; font-weight: 900; margin: 4px 0; color: var(--ink); }
+    .cooldown-num {
+      font-size: 34px; font-weight: 900; color: var(--accent);
+      line-height: 1.1; margin: 2px 0;
+    }
     .timer-wrap {
       background: #f8f5ff; border: 2.5px solid var(--ink); border-radius: 16px;
       padding: 8px 12px; margin: 6px 0;
@@ -203,7 +207,7 @@
     <h1 class="logo-title">Spotify イントロドン！</h1>
     <p class="hint" style="margin-bottom:18px;">
       Android 1台でワイワイ早押しバトル！<br>
-      スピード得点制・自動再生・曲数無制限
+      スピード得点制・クールタイム自動進行・曲数無制限
     </p>
 
     <div id="client-id-box" style="text-align:left; margin-bottom:14px;">
@@ -338,14 +342,19 @@
         </select>
       </label>
     </div>
-    <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:800;">
-      <input type="checkbox" id="opt-autoplay" checked style="width:18px; height:18px;" />
-      次の問題へ進んだら自動で曲を再生する
+    <label>
+      <span class="hint">2問目以降の自動スタート（クールタイム）</span>
+      <select id="opt-cooldown">
+        <option value="3" selected>3秒カウントダウン後に自動スタート（おすすめ）</option>
+        <option value="2">2秒カウントダウン後に自動スタート</option>
+        <option value="5">5秒カウントダウン後に自動スタート</option>
+        <option value="0">毎回手動でスタートを押す</option>
+      </select>
     </label>
   </div>
 
   <button class="btn-pink" style="width:100%; padding:16px; font-size:20px;" onclick="startGame()">
-    🚀 ゲームスタート！
+    🚀 対戦画面へすすむ！
   </button>
   <p class="hint" style="text-align:center; margin-top:8px;">
     ※開始前にSpotifyアプリで1秒だけ再生→停止しておくとスムーズです。
@@ -372,9 +381,10 @@
       </div>
     </div>
 
-    <div id="game-status" class="status-text">準備中...</div>
-    <div class="row" style="justify-content:center; margin-top:6px;">
-      <button id="btn-play" class="btn-pop btn-sm" style="display:none;" onclick="playCurrentQuestion()">▶ イントロ再生</button>
+    <div id="cooldown-display" class="cooldown-num" style="display:none;">3</div>
+    <div id="game-status" class="status-text">準備ができたらスタートを押してください</div>
+    <div class="row" style="justify-content:center; margin-top:8px;">
+      <button id="btn-play" class="btn-pop" style="padding:12px 24px; font-size:17px;" onclick="playCurrentQuestion()">▶ 第1問をスタート！</button>
       <button id="btn-giveup" class="btn-sun btn-sm" onclick="giveUpQuestion()" disabled>パス / 正解を見る</button>
     </div>
   </div>
@@ -416,7 +426,7 @@
     <img id="reveal-img" class="album-art" src="" alt="" />
     <div id="reveal-title" style="font-size:20px; font-weight:900;"></div>
     <div id="reveal-artist" class="hint" style="font-size:14px; margin-bottom:14px;"></div>
-    <button class="btn-pink" style="width:100%; font-size:17px;" onclick="nextRound()">次の問題へ ➔</button>
+    <button id="btn-next-round" class="btn-pink" style="width:100%; font-size:17px;" onclick="nextRound()">次の問題へ ➔</button>
   </div>
 </div>
 
@@ -472,18 +482,19 @@
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === "suspended") audioCtx.resume();
       const now = audioCtx.currentTime;
-      const beep = (freq, start, dur, wave = "sine") => {
+      const beep = (freq, start, dur, wave = "sine", vol = 0.24) => {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = wave;
         osc.frequency.setValueAtTime(freq, start);
-        gain.gain.setValueAtTime(0.24, start);
+        gain.gain.setValueAtTime(vol, start);
         gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
         osc.start(start);
         osc.stop(start + dur);
       };
+      if (type === "tick") beep(660, now, 0.08, "sine", 0.12);
       if (type === "buzz") { beep(880, now, 0.1, "triangle"); beep(1174, now + 0.08, 0.12, "triangle"); }
       if (type === "correct") { beep(1046, now, 0.12); beep(1318, now + 0.11, 0.12); beep(1568, now + 0.22, 0.3); }
       if (type === "wrong") { beep(200, now, 0.16, "sawtooth"); beep(155, now + 0.18, 0.28, "sawtooth"); }
@@ -636,6 +647,7 @@
     const token = localStorage.getItem("sp_access_token");
     const url = pathOrUrl.startsWith("http") ? pathOrUrl : `https://api.spotify.com/v1${pathOrUrl}`;
     const res = await fetch(url, {
+      cache: "no-store",
       ...options,
       headers: {
         Authorization: `Bearer ${token}`,
@@ -764,6 +776,7 @@
     renderPool();
   }
 
+  
   // ---------- モードA：プレイリスト選択 ----------
   function setSelectedDirectPlaylist(pl) {
     selectedDirectPlaylist = pl;
@@ -982,12 +995,16 @@
     renderPool();
   }
 
-  // ---------- 低遅延 & ズレ防止 Spotify 再生コントロール ----------
+  // ---------- ズレ防止・スマートフォン優先 Spotify 再生コントロール ----------
   async function refreshDeviceId() {
     const data = await spotifyFetch("/me/player/devices");
     const devices = data?.devices || [];
-    const active = devices.find(d => d.is_active) || devices[0];
-    cachedDeviceId = active ? active.id : null;
+    const pick =
+      devices.find(d => d.is_active && d.type === "Smartphone") ||
+      devices.find(d => d.type === "Smartphone") ||
+      devices.find(d => d.is_active) ||
+      devices[0];
+    cachedDeviceId = pick ? pick.id : null;
     return cachedDeviceId;
   }
 
@@ -1008,7 +1025,7 @@
       if (e.status === 404 || /device/i.test(e.message || "")) {
         cachedDeviceId = null;
         const freshId = await requireDeviceId();
-                return await fn(freshId);
+        return await fn(freshId);
       }
       throw e;
     }
@@ -1016,7 +1033,7 @@
 
   async function getPlaybackSnapshot() {
     try {
-      const st = await spotifyFetch("/me/player/currently-playing");
+      const st = await spotifyFetch("/me/player");
       if (!st) return null;
       const track = toTrackObj(st.item);
       return {
@@ -1043,26 +1060,11 @@
   async function triggerDirectPlaylistStart(playlist) {
     await withDeviceRetry(async id => {
       await spotifyFetch(`/me/player/shuffle?state=true&device_id=${encodeURIComponent(id)}`, { method: "PUT" }).catch(() => {});
-      const body = { context_uri: playlist.uri, position_ms: 0 };
-      if (playlist.total && playlist.total > 1) {
-        body.offset = { position: Math.floor(Math.random() * playlist.total) };
-      }
-      try {
-        await spotifyFetch(`/me/player/play?device_id=${encodeURIComponent(id)}`, {
-          method: "PUT",
-          body: JSON.stringify(body)
-        });
-      } catch (e) {
-        if (body.offset) {
-          delete body.offset;
-          await spotifyFetch(`/me/player/play?device_id=${encodeURIComponent(id)}`, {
-            method: "PUT",
-            body: JSON.stringify(body)
-          });
-        } else {
-          throw e;
-        }
-      }
+      await sleep(180);
+      await spotifyFetch(`/me/player/play?device_id=${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: JSON.stringify({ context_uri: playlist.uri, position_ms: 0 })
+      });
     });
   }
 
@@ -1072,53 +1074,66 @@
     );
   }
 
-  // 実際に新しい曲へ切り替わるまで確実に待機（1曲ズレ防止の要）
+  // 確実に「新しい曲」へ切り替わったことを検証（古い曲を誤採用しない）
   async function waitForTrackSwitch({ beforeTrackId, beforeContextUri, targetPlaylistId, isNext, roundToken }) {
     const wasSamePlaylist = Boolean(targetPlaylistId && beforeContextUri && beforeContextUri.includes(targetPlaylistId));
-    let lastSnap = null;
     let nudgedPlay = false;
+    let nudgedNext = false;
 
-    await sleep(350);
-    for (let i = 0; i < 16; i++) {
+    await sleep(450);
+    for (let i = 0; i < 20; i++) {
       if (!game || game.roundToken !== roundToken) return null;
       const snap = await getPlaybackSnapshot();
+
       if (snap && snap.track) {
-        lastSnap = snap;
-        const trackChanged = !beforeTrackId || snap.trackId !== beforeTrackId;
+        const trackChanged = Boolean(beforeTrackId) ? (snap.trackId !== beforeTrackId) : true;
 
         if (isNext) {
           if (trackChanged) {
             if (!snap.isPlaying && !nudgedPlay) {
               nudgedPlay = true;
               await resumePlaybackFast();
+              await sleep(250);
+              const fresh = await getPlaybackSnapshot();
+              return fresh?.track ? fresh : snap;
             }
             return snap;
+          }
+          // 一時停止からのnextが効かなかった場合、途中で1回だけ再送信
+          if (i === 5 && !nudgedNext) {
+            nudgedNext = true;
+            await triggerDirectPlaylistNext().catch(() => {});
           }
         } else {
           const inTarget = Boolean(targetPlaylistId && snap.contextUri && snap.contextUri.includes(targetPlaylistId));
           if (!wasSamePlaylist) {
-            // 別の曲から目的のプレイリストへ切り替わったことを確認
-            if (inTarget && (trackChanged || (snap.isPlaying && snap.progressMs < 8000))) {
+            // 別プレイリストからの切り替え：目的のプレイリストに入り、再生中であることを確認
+            if (inTarget && snap.isPlaying && (trackChanged || snap.progressMs < 6000)) {
               return snap;
             }
-            // 一部プレイリストでcontextが返らない場合のフォールバック
-            if (i >= 7 && trackChanged && snap.isPlaying) {
+            // 一部公式プレイリストでcontextが返らない場合：曲が変わって再生中かつ頭付近
+            if (i >= 5 && trackChanged && snap.isPlaying && snap.progressMs < 8000) {
               return snap;
             }
           } else {
-            if (trackChanged) return snap;
-            if (i >= 5 && snap.isPlaying && snap.progressMs < 5000) return snap;
+            // 同じプレイリストを続けて遊ぶ場合
+            if (trackChanged && snap.isPlaying) return snap;
+            if (i === 4 && !trackChanged && !nudgedNext) {
+              // 偶然同じ曲が先頭になった場合は自動で次の曲へ送る
+              nudgedNext = true;
+              await triggerDirectPlaylistNext().catch(() => {});
+            }
+          }
+          if (!snap.isPlaying && i === 4 && !nudgedPlay) {
+            nudgedPlay = true;
+            await resumePlaybackFast();
           }
         }
       }
-      await sleep(250);
+      await sleep(280);
     }
 
-    if (lastSnap && lastSnap.track) {
-      if (!lastSnap.isPlaying) await resumePlaybackFast();
-      return lastSnap;
-    }
-    throw new Error("再生中の曲情報を取得できませんでした。もう一度お試しください。");
+    throw new Error("Spotifyの曲切り替えを確認できませんでした。Spotifyアプリが起動しているか確認して、もう一度スタートを押してください。");
   }
 
   function pausePlaybackFast() {
@@ -1191,17 +1206,17 @@
     const answerMode = document.getElementById("opt-mode").value;
     const scoringMode = document.getElementById("opt-scoring").value;
     const roundOpt = document.getElementById("opt-rounds").value;
-    const autoPlay = document.getElementById("opt-autoplay").checked;
+    const cooldownSec = Number(document.getElementById("opt-cooldown").value);
 
     const baseState = {
       playerCount,
       mode: answerMode,
       scoringMode,
-      autoPlay,
+      cooldownSec,
       round: 0,
       roundToken: 0,
       scores: Array(playerCount).fill(0),
-      state: "READY",
+      state: "READY", // READY | COOLDOWN | LOADING | PLAYING | ANSWERING | REVEAL
       lockedOut: new Set(),
       activePlayer: null,
       currentTrack: null,
@@ -1245,16 +1260,16 @@
       };
     }
 
+    // 第1問は必ず手動スタートで待機
     showScreen("game");
+    document.getElementById("cooldown-display").style.display = "none";
+    document.getElementById("game-status").textContent = "準備ができたら下のスタートを押してください！";
+    const playBtn = document.getElementById("btn-play");
+    playBtn.textContent = "▶ 第1問をスタート！";
+    playBtn.style.display = "inline-block";
+    playBtn.disabled = false;
     updateTimerDisplay();
     renderGameUI();
-
-    if (game.autoPlay) {
-      playCurrentQuestion();
-    } else {
-      document.getElementById("game-status").textContent = "「イントロ再生」を押してスタート！";
-      document.getElementById("btn-play").style.display = "inline-block";
-    }
   }
 
   function renderGameUI() {
@@ -1307,29 +1322,62 @@
 
     const playBtn = document.getElementById("btn-play");
     playBtn.disabled = game.state !== "READY";
-    if (game.state === "PLAYING" || game.state === "LOADING") playBtn.style.display = "none";
+    if (game.state === "PLAYING" || game.state === "LOADING" || game.state === "COOLDOWN") {
+      playBtn.style.display = "none";
+    }
     document.getElementById("btn-giveup").disabled = game.state !== "PLAYING";
   }
 
-  async function playCurrentQuestion() {
+  async function startCooldownAndPlay(sec) {
     const token = ++game.roundToken;
-    game.state = "LOADING";
+    game.state = "COOLDOWN";
     game.elapsedMs = 0;
     game.playingSince = null;
     stopTimerLoop();
     updateTimerDisplay();
     renderGameUI();
 
-    document.getElementById("game-status").textContent = "🎵 次の曲をスタンバイ中...";
+    const cdEl = document.getElementById("cooldown-display");
+    cdEl.style.display = "block";
+    document.getElementById("game-status").textContent = "次の曲までスタンバイ！";
+
+    for (let s = sec; s >= 1; s--) {
+      if (!game || game.roundToken !== token) return;
+      cdEl.textContent = String(s);
+      playTone("tick");
+      await sleep(1000);
+    }
+
+    if (!game || game.roundToken !== token) return;
+    cdEl.style.display = "none";
+    playCurrentQuestion();
+  }
+
+  async function playCurrentQuestion() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+    } catch (e) {}
+
+    const token = ++game.roundToken;
+    game.state = "LOADING";
+    game.elapsedMs = 0;
+    game.playingSince = null;
+    stopTimerLoop();
+    updateTimerDisplay();
+    document.getElementById("cooldown-display").style.display = "none";
+    renderGameUI();
+
+    document.getElementById("game-status").textContent = "🎵 Spotifyで曲を準備中...";
 
     try {
       if (game.source === "direct") {
         let snap;
         if (!game.directStarted) {
-          // 1曲目：再生前に流れていた曲を記録してから目的のプレイリストを開始
+          // 1曲目：再生デバイスを再確認してから開始
+          await refreshDeviceId();
           const beforeSnap = await getPlaybackSnapshot();
           await triggerDirectPlaylistStart(game.playlist);
-          game.directStarted = true;
           snap = await waitForTrackSwitch({
             beforeTrackId: beforeSnap?.trackId || null,
             beforeContextUri: beforeSnap?.contextUri || null,
@@ -1337,9 +1385,11 @@
             isNext: false,
             roundToken: token
           });
+          if (!game || game.roundToken !== token) return;
+          game.directStarted = true;
         } else {
-          // 2曲目以降：1個前の曲から確実に切り替わるのを待つ
-          const beforeTrackId = game.currentTrack?.id || null;
+          // 2曲目以降：1個前の曲から確実に切り替わるのを待機
+          const beforeTrackId = game.currentTrack?.id || (await getPlaybackSnapshot())?.trackId || null;
           await triggerDirectPlaylistNext();
           snap = await waitForTrackSwitch({
             beforeTrackId,
@@ -1348,9 +1398,9 @@
             isNext: true,
             roundToken: token
           });
+          if (!game || game.roundToken !== token) return;
         }
 
-        if (!game || game.roundToken !== token) return;
         if (!snap || !snap.track) throw new Error("曲情報を取得できませんでした。");
 
         game.currentTrack = snap.track;
@@ -1366,6 +1416,7 @@
         renderGameUI();
         startTimerLoop();
       } else {
+        if (game.round === 0) await refreshDeviceId();
         if (game.deckCursor >= game.deck.length) {
           game.deck = shuffle(game.allTracks);
           game.deckCursor = 0;
@@ -1389,10 +1440,12 @@
         startTimerLoop();
       }
     } catch (e) {
+      if (!game || game.roundToken !== token) return;
       game.state = "READY";
       stopTimerLoop();
       document.getElementById("game-status").textContent = "再生できませんでした（下から再試行）";
       const playBtn = document.getElementById("btn-play");
+      playBtn.textContent = "▶ もう一度スタート";
       playBtn.style.display = "inline-block";
       playBtn.disabled = false;
       renderGameUI();
@@ -1435,22 +1488,13 @@
     const textArea = document.getElementById("ans-text-area");
     document.getElementById("modal-answer").classList.add("active");
 
+    const track = game.currentTrack;
+
     if (game.mode === "choice") {
       choiceArea.style.display = "block";
       textArea.style.display = "none";
       choiceArea.innerHTML = `<div class="hint" style="padding:16px 0;">選択肢を準備中...</div>`;
 
-      // 安全装置：直再生モードでは実際に鳴っていた曲と一致するか二重確認
-      if (game.source === "direct") {
-        const liveSnap = await getPlaybackSnapshot();
-        if (liveSnap?.track && liveSnap.track.id !== game.currentTrack?.id) {
-          game.currentTrack = liveSnap.track;
-          game.historyTracks.push(liveSnap.track);
-          game.choicesPromise = generateDirectChoices(liveSnap.track, game.historyTracks);
-        }
-      }
-
-      const track = game.currentTrack;
       if (!track) {
         choiceArea.innerHTML = `<div class="hint" style="color:var(--accent-dark);">曲情報の取得に失敗しました。パスしてください。</div>`;
         return;
@@ -1479,13 +1523,7 @@
       const input = document.getElementById("ans-text-input");
       const submitBtn = document.getElementById("btn-text-submit");
       input.value = "";
-      if (game.source === "direct") {
-        const liveSnap = await getPlaybackSnapshot();
-        if (liveSnap?.track && liveSnap.track.id !== game.currentTrack?.id) {
-          game.currentTrack = liveSnap.track;
-        }
-      }
-      submitBtn.disabled = !game.currentTrack;
+      submitBtn.disabled = !track;
       setTimeout(() => input.focus(), 80);
     }
   }
@@ -1541,14 +1579,10 @@
     }
   }
 
-  async function giveUpQuestion() {
+  function giveUpQuestion() {
     pausePlaybackFast();
     stopTimerLoop();
     game.playingSince = null;
-    if (game.source === "direct") {
-      const liveSnap = await getPlaybackSnapshot();
-      if (liveSnap?.track) game.currentTrack = liveSnap.track;
-    }
     showReveal("⏭ 正解はこちら！", null);
   }
 
@@ -1567,6 +1601,8 @@
     document.getElementById("reveal-img").src = track?.image || "";
     document.getElementById("reveal-title").textContent = track?.name || "（曲情報を取得できませんでした）";
     document.getElementById("reveal-artist").textContent = track?.artist || "";
+    document.getElementById("btn-next-round").textContent =
+      game.cooldownSec > 0 ? `次の問題へ（${game.cooldownSec}秒後に自動開始）➔` : "次の問題へ ➔";
     document.getElementById("modal-reveal").classList.add("active");
     renderGameUI();
   }
@@ -1578,19 +1614,22 @@
       finishGame();
       return;
     }
-    game.state = "READY";
     game.lockedOut = new Set();
     game.activePlayer = null;
     game.elapsedMs = 0;
     game.playingSince = null;
     updateTimerDisplay();
-    renderGameUI();
 
-    if (game.autoPlay) {
-      playCurrentQuestion();
+    if (game.cooldownSec > 0) {
+      startCooldownAndPlay(game.cooldownSec);
     } else {
-      document.getElementById("game-status").textContent = "「イントロ再生」を押して次の曲へ！";
-      document.getElementById("btn-play").style.display = "inline-block";
+      game.state = "READY";
+      document.getElementById("game-status").textContent = "準備ができたらスタートを押してください！";
+      const playBtn = document.getElementById("btn-play");
+      playBtn.textContent = `▶ 第${game.round + 1}問をスタート！`;
+      playBtn.style.display = "inline-block";
+      playBtn.disabled = false;
+      renderGameUI();
     }
   }
 
@@ -1601,8 +1640,10 @@
   }
 
   function finishGame() {
+    if (game) game.roundToken++;
     pausePlaybackFast();
     stopTimerLoop();
+    document.getElementById("cooldown-display").style.display = "none";
     document.getElementById("modal-answer").classList.remove("active");
     document.getElementById("modal-reveal").classList.remove("active");
     const medals = ["👑", "🥈", "🥉", "🎵"];
